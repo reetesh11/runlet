@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Runlet — Architecture</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0a0a0f; color: #e2e8f0; font-family: 'SF Mono', 'Fira Code', monospace; padding: 40px 24px; min-height: 100vh; }
+  h1 { font-size: 28px; font-weight: 700; color: #fff; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 48px; font-family: system-ui; }
+  h2 { font-size: 13px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; }
+  .section { margin-bottom: 48px; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 20px; }
+  .card-title { font-size: 13px; font-weight: 600; color: #e2e8f0; margin-bottom: 4px; font-family: system-ui; }
+  .card-sub { font-size: 11px; color: #6b7280; margin-bottom: 12px; font-family: system-ui; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 8px; border-radius: 99px; border: 1px solid; font-family: system-ui; font-weight: 600; }
+  .badge-blue { background: rgba(59,130,246,0.1); color: #60a5fa; border-color: rgba(59,130,246,0.2); }
+  .badge-purple { background: rgba(139,92,246,0.1); color: #a78bfa; border-color: rgba(139,92,246,0.2); }
+  .badge-green { background: rgba(16,185,129,0.1); color: #34d399; border-color: rgba(16,185,129,0.2); }
+  .badge-amber { background: rgba(245,158,11,0.1); color: #fbbf24; border-color: rgba(245,158,11,0.2); }
+  .badge-red { background: rgba(239,68,68,0.1); color: #f87171; border-color: rgba(239,68,68,0.2); }
+  .items { list-style: none; margin-top: 8px; }
+  .items li { font-size: 12px; color: #9ca3af; padding: 3px 0; display: flex; align-items: center; gap-8px; font-family: system-ui; }
+  .items li::before { content: '→'; color: #4b5563; margin-right: 8px; }
+  .flow { display: flex; flex-direction: column; gap: 0; }
+  .flow-step { display: flex; align-items: flex-start; gap: 16px; padding: 12px 0; }
+  .flow-step:not(:last-child) { border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .step-num { width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+  .step-t1 { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .step-t2 { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .step-t3 { background: rgba(139,92,246,0.15); color: #a78bfa; }
+  .step-t4 { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .step-t5 { background: rgba(20,184,166,0.15); color: #2dd4bf; }
+  .step-t6 { background: rgba(239,68,68,0.15); color: #f87171; }
+  .step-t7 { background: rgba(16,185,129,0.15); color: #34d399; }
+  .step-t8 { background: rgba(99,102,241,0.15); color: #818cf8; }
+  .step-t9 { background: rgba(16,185,129,0.15); color: #34d399; }
+  .step-name { font-size: 13px; font-weight: 600; color: #e2e8f0; font-family: system-ui; }
+  .step-desc { font-size: 12px; color: #6b7280; margin-top: 2px; font-family: system-ui; }
+  .arrow { text-align: center; color: #374151; font-size: 20px; margin: 4px 0; }
+  .flow-diagram { display: flex; flex-direction: column; gap: 8px; }
+  .flow-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px; }
+  .flow-box.highlight { border-color: rgba(99,102,241,0.3); background: rgba(99,102,241,0.05); }
+  .flow-box-title { font-size: 12px; font-weight: 600; color: #e2e8f0; font-family: system-ui; }
+  .flow-box-detail { font-size: 11px; color: #6b7280; margin-top: 2px; font-family: system-ui; }
+  .table { width: 100%; border-collapse: collapse; }
+  .table th { font-size: 11px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 1px; padding: 8px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.07); font-family: system-ui; }
+  .table td { font-size: 12px; color: #9ca3af; padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-family: system-ui; }
+  .table td:first-child { color: #e2e8f0; font-weight: 500; }
+  .divider { height: 1px; background: rgba(255,255,255,0.06); margin: 48px 0; }
+  code { font-size: 11px; background: rgba(255,255,255,0.05); padding: 1px 6px; border-radius: 4px; color: #a78bfa; }
+  @media (max-width: 768px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<h1>Runlet Architecture</h1>
+<p class="subtitle">AI Agent Marketplace — System Design & Component Reference</p>
+
+<!-- Services -->
+<div class="section">
+  <h2>Deployed Services</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="badge badge-blue">Vercel</span>
+        <span style="font-size:11px;color:#6b7280">port 443</span>
+      </div>
+      <div class="card-title">Web App</div>
+      <div class="card-sub">Next.js 14 App Router</div>
+      <ul class="items">
+        <li>Server components → direct DB reads</li>
+        <li>/api/auth → NextAuth JWT</li>
+        <li>/api/v1/ → proxy to Hono API</li>
+        <li>Marketplace, Dashboard, Config Card</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="badge badge-purple">Fly.io</span>
+        <span style="font-size:11px;color:#6b7280">port 3001</span>
+      </div>
+      <div class="card-title">Hono API</div>
+      <div class="card-sub">runlet-api.fly.dev</div>
+      <ul class="items">
+        <li>REST API — deployments, runs, connectors</li>
+        <li>Only accepts X-Internal-Secret calls</li>
+        <li>Enqueues jobs to BullMQ</li>
+        <li>Webhook receiver for external triggers</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+        <span class="badge badge-amber">Fly.io</span>
+        <span style="font-size:11px;color:#6b7280">background</span>
+      </div>
+      <div class="card-title">BullMQ Worker</div>
+      <div class="card-sub">runlet-worker (no HTTP)</div>
+      <ul class="items">
+        <li>Processes run jobs from Redis queue</li>
+        <li>T1–T9 lifecycle execution</li>
+        <li>LLM calls, connector actions</li>
+        <li>Writes audit events to DB</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Infrastructure -->
+<div class="section">
+  <h2>Infrastructure</h2>
+  <div class="grid grid-3">
+    <div class="card">
+      <span class="badge badge-green" style="margin-bottom:10px;display:inline-block">Neon</span>
+      <div class="card-title">PostgreSQL Database</div>
+      <div class="card-sub">19 tables · Drizzle ORM</div>
+      <ul class="items">
+        <li>agents, agent_versions</li>
+        <li>deployments, runs, audit_events</li>
+        <li>workspaces, users, connectors</li>
+        <li>workspace_agents, flows</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="badge badge-red" style="margin-bottom:10px;display:inline-block">Upstash</span>
+      <div class="card-title">Redis Queue</div>
+      <div class="card-sub">BullMQ · 6 queues</div>
+      <ul class="items">
+        <li>run-realtime (sync responses)</li>
+        <li>run-standard (normal async)</li>
+        <li>run-batch (bulk/scheduled)</li>
+        <li>flow-orchestrate, notify, health-check</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="badge badge-amber" style="margin-bottom:10px;display:inline-block">Cloudflare R2</span>
+      <div class="card-title">Object Storage</div>
+      <div class="card-sub">Two buckets</div>
+      <ul class="items">
+        <li>runlet-prompts (agent prompt bodies)</li>
+        <li>runlet-payloads (run input/output)</li>
+        <li>AES-256 encrypted before upload</li>
+        <li>Zero egress fees</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Auth Flow -->
+<div class="section">
+  <h2>Authentication Flow</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">Login → JWT Cookie</div>
+      <div class="flow-diagram">
+        <div class="flow-box highlight">
+          <div class="flow-box-title">Browser → POST /api/auth/credentials</div>
+          <div class="flow-box-detail">email only, no password in dev</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box">
+          <div class="flow-box-title">NextAuth → DB lookup user</div>
+          <div class="flow-box-detail">find or create user + workspace</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box highlight">
+          <div class="flow-box-title">NextAuth → Set JWE cookie</div>
+          <div class="flow-box-detail">encrypted with NEXTAUTH_SECRET · 30 day expiry</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box">
+          <div class="flow-box-title">Root page → query workspace</div>
+          <div class="flow-box-detail">redirect to /workspace/[id]/dashboard</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="margin-bottom:16px">API Call → Proxy → Hono</div>
+      <div class="flow-diagram">
+        <div class="flow-box highlight">
+          <div class="flow-box-title">Browser → fetch('/api/v1/...')</div>
+          <div class="flow-box-detail">no auth header needed — cookie auto-sent</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box">
+          <div class="flow-box-title">Next.js proxy → getServerSession()</div>
+          <div class="flow-box-detail">decrypts JWE cookie · gets userId</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box">
+          <div class="flow-box-title">Proxy → forward to Hono</div>
+          <div class="flow-box-detail">adds X-Internal-Secret + X-User-Id headers</div>
+        </div>
+        <div class="arrow">↓</div>
+        <div class="flow-box highlight">
+          <div class="flow-box-title">Hono authMiddleware</div>
+          <div class="flow-box-detail">verifies X-Internal-Secret · checks workspace membership</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Run Lifecycle -->
+<div class="section">
+  <h2>Run Lifecycle (T1–T9)</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num step-t1">T1</div>
+          <div>
+            <div class="step-name">Fetch Config</div>
+            <div class="step-desc">Load deployment, decrypt config with CONFIG_ENCRYPTION_KEY, bind connectors</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t2">T2</div>
+          <div>
+            <div class="step-name">Input Guardrails</div>
+            <div class="step-desc">Check PII policy, topic blocklist, content filters. Block or mask before LLM sees it.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t3">T3</div>
+          <div>
+            <div class="step-name">LLM Call</div>
+            <div class="step-desc">Call Claude with system prompt + input. Track tokens, latency, cost.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t4">T4</div>
+          <div>
+            <div class="step-name">Output Guardrails</div>
+            <div class="step-desc">Score confidence. Check output content. Block if guardrails fire.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t5">T5</div>
+          <div>
+            <div class="step-name">Connector Actions</div>
+            <div class="step-desc">Execute Zendesk/Slack/GitHub/Notion actions from structured LLM output.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="flow">
+        <div class="flow-step">
+          <div class="step-num step-t6">T6</div>
+          <div>
+            <div class="step-name">Human Review Gate</div>
+            <div class="step-desc">If confidence &lt; threshold, pause run. Queue human_review_request. Wait for decision.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t7">T7</div>
+          <div>
+            <div class="step-name">Audit Write</div>
+            <div class="step-desc">Write all events to audit_events table. Immutable trail of every action.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t8">T8</div>
+          <div>
+            <div class="step-name">Payload Storage</div>
+            <div class="step-desc">Encrypt + store input/output JSON to Cloudflare R2. Store reference in DB.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="step-num step-t9">T9</div>
+          <div>
+            <div class="step-name">Completion</div>
+            <div class="step-desc">Update run status, duration, token count. Increment deployment.runCount. Send alerts if configured.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Package Dependencies -->
+<div class="section">
+  <h2>Package Dependencies</h2>
+  <div class="card">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Package</th>
+          <th>Used by</th>
+          <th>Purpose</th>
+          <th>Key dependency</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>@runlet/db</td><td>web, api, worker</td><td>Drizzle schema + migrations + client</td><td>drizzle-orm, postgres</td></tr>
+        <tr><td>@runlet/queue</td><td>api, worker</td><td>BullMQ queues + Redis client</td><td>bullmq, ioredis</td></tr>
+        <tr><td>@runlet/storage</td><td>api, worker</td><td>Cloudflare R2 client</td><td>@aws-sdk/client-s3</td></tr>
+        <tr><td>@runlet/connectors</td><td>api, worker</td><td>Zendesk, Slack, GitHub, Notion</td><td>per-provider SDKs</td></tr>
+        <tr><td>@runlet/schemas</td><td>web, api</td><td>Zod request/response validation</td><td>zod</td></tr>
+        <tr><td>@runlet/types</td><td>all</td><td>Shared TypeScript interfaces</td><td>none (types only)</td></tr>
+        <tr><td>@runlet/utils</td><td>all</td><td>Encryption, ID gen, HMAC</td><td>node:crypto</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- Key Decisions -->
+<div class="section">
+  <h2>Key Design Decisions</h2>
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="card-title">Agents are marketplace-level</div>
+      <div class="card-sub">No workspace_id on agents table</div>
+      <p style="font-size:12px;color:#6b7280;line-height:1.6;font-family:system-ui">Agents are public catalogue items. The <code>workspace_agents</code> table links a workspace to an installed agent. Mirrors npm — packages are global, your package.json is local.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">JWT over database sessions</div>
+      <div class="card-sub">Sessions never written to DB</div>
+      <p style="font-size:12px;color:#6b7280;line-height:1.6;font-family:system-ui">Zero DB load from session reads. Works if Postgres is slow. Trade-off: can't force-logout users server-side. Switch to database strategy when you need that.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Proxy architecture for API auth</div>
+      <div class="card-sub">Browser never sends tokens to Hono</div>
+      <p style="font-size:12px;color:#6b7280;line-height:1.6;font-family:system-ui">All API calls go through <code>/api/v1/</code> in Next.js. The proxy decrypts JWT and adds <code>X-Internal-Secret</code>. Hono stays stateless. In production Hono can be locked to Vercel IPs only.</p>
+    </div>
+    <div class="card">
+      <div class="card-title">postgres.js over node-postgres</div>
+      <div class="card-sub">Recommended by drizzle-orm docs</div>
+      <p style="font-size:12px;color:#6b7280;line-height:1.6;font-family:system-ui">The <code>pg</code> package has compatibility issues with newer drizzle-orm. <code>postgres.js</code> with <code>prepare: false</code> works reliably for both migrations and queries.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
