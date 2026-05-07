@@ -1,0 +1,30 @@
+{
+  "name": "@runlet/api",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "tsx watch --env-file=../../.env.local src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.2.0",
+    "@hono/node-server": "^1.9.0",
+    "@hono/zod-openapi": "^0.2.0",
+    "@runlet/db": "workspace:*",
+    "@runlet/schemas": "workspace:*",
+    "@runlet/types": "workspace:*",
+    "@runlet/utils": "workspace:*",
+    "@runlet/queue": "workspace:*",
+    "@runlet/storage": "workspace:*",
+    "@runlet/connectors": "workspace:*",
+    "drizzle-orm": "latest",
+    "zod": "^3.22.0",
+    "nanoid": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "tsx": "^4.7.0",
+    "@types/node": "^20.0.0"
+  }
+}
