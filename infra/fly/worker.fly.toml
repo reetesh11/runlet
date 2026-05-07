@@ -1,13 +1,14 @@
 app = "runlet-worker"
-primary_region = "lhr"
+primary_region = "bom"
 
 [build]
-  dockerfile = "apps/worker/Dockerfile"
+  dockerfile = "../../apps/worker/Dockerfile"
 
 [env]
   NODE_ENV = "production"
 
+# Worker has no HTTP service — it's a background process
 [[vm]]
+  memory = "512mb"
   cpu_kind = "shared"
   cpus = 1
-  memory_mb = 512
