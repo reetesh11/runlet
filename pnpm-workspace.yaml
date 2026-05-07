@@ -1,8 +1,0 @@
-packages:
-  - "apps/*"
-  - "packages/*"
-allowBuilds:
-  es5-ext: true
-  esbuild: true
-  msgpackr-extract: true
-  unrs-resolver: true
