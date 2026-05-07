@@ -26,9 +26,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.9.0
         version: 1.19.14(hono@4.12.17)
-      '@hono/zod-openapi':
+      '@hono/zod-validator':
         specifier: ^0.2.0
-        version: 0.2.0(hono@4.12.17)(zod@3.25.76)
+        version: 0.2.2(hono@4.12.17)(zod@3.25.76)
       '@runlet/connectors':
         specifier: workspace:*
         version: link:../../packages/connectors
@@ -59,6 +59,9 @@ importers:
       nanoid:
         specifier: ^5.0.0
         version: 5.1.11
+      postgres:
+        specifier: latest
+        version: 3.4.9
       zod:
         specifier: ^3.22.0
         version: 3.25.76
@@ -156,7 +159,7 @@ importers:
         version: 8.5.14
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.21.0)(yaml@2.8.4)
+        version: 3.4.19(tsx@4.21.0)
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
@@ -320,11 +323,6 @@ packages:
 
   '@anthropic-ai/sdk@0.24.3':
     resolution: {integrity: sha512-916wJXO6T6k8R6BAAcLhLPv/pnLGy7YSEBZXZ1XTFbLcTZE8oTy3oDW9WJf9KKZwMvVcePIfoTSvzXHRcGxkQQ==}
-
-  '@asteasolutions/zod-to-openapi@5.5.0':
-    resolution: {integrity: sha512-d5HwrvM6dOKr3XdeF+DmashGvfEc+1oiEfbscugsiwSTrFtuMa7ETpW9sTNnVgn+hJaz+PRxPQUYD7q9/5dUig==}
-    peerDependencies:
-      zod: ^3.20.2
 
   '@auth/core@0.41.2':
     resolution: {integrity: sha512-Hx5MNBxN2fJTbJKGUKAA0wca43D0Akl3TvufY54Gn8lop7F+34vU1zA1pn0vQfIoVuLIrpfc2nkyjwIaPJMW7w==}
@@ -1002,15 +1000,8 @@ packages:
     peerDependencies:
       hono: ^4
 
-  '@hono/zod-openapi@0.2.0':
-    resolution: {integrity: sha512-jyk8IpY0nXSpaZH0YTz38NNWXDLgf2d0RJuAcKT1W2tZLJmLvgoyuO31uL0oY9LYewD6z9Zh4ti3CDwkbo3CAw==}
-    engines: {node: '>=16.0.0'}
-    peerDependencies:
-      hono: '*'
-      zod: 3.*
-
-  '@hono/zod-validator@0.1.11':
-    resolution: {integrity: sha512-PQXeHUP0+36qpRt8yfeD7N2jbK3ETlGvSN6dMof/HwUC/APRokQRjpXZm4rrlG71Ft0aWE01+Bm4XejqPie5Uw==}
+  '@hono/zod-validator@0.2.2':
+    resolution: {integrity: sha512-dSDxaPV70Py8wuIU2QNpoVEIOSzSXZ/6/B/h4xA7eOMz7+AarKTSGV8E6QwrdcCbBLkpqfJ4Q2TmBO0eP1tCBQ==}
     peerDependencies:
       hono: '>=3.9.0'
       zod: ^3.19.1
@@ -3021,9 +3012,6 @@ packages:
       zod:
         optional: true
 
-  openapi3-ts@4.5.0:
-    resolution: {integrity: sha512-jaL+HgTq2Gj5jRcfdutgRGLosCy/hT8sQf6VOy+P+g36cZOjI1iukdPnijC+4CmeRzg/jEllJUboEic2FhxhtQ==}
-
   openid-client@5.7.1:
     resolution: {integrity: sha512-jDBPgSVfTnkIh71Hg9pRvtJc6wTwqjRkN88+gCFtYWrlP4Yx2Dsrow8uPi3qLr/aeymPF3o2+dS+wOpglK04ew==}
 
@@ -3657,11 +3645,6 @@ packages:
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
 
-  yaml@2.8.4:
-    resolution: {integrity: sha512-ml/JPOj9fOQK8RNnWojA67GbZ0ApXAUlN2UQclwv2eVgTgn7O9gg9o7paZWKMp4g0H3nTLtS9LVzhkpOFIKzog==}
-    engines: {node: '>= 14.6'}
-    hasBin: true
-
   yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
@@ -3700,11 +3683,6 @@ snapshots:
       web-streams-polyfill: 3.3.3
     transitivePeerDependencies:
       - encoding
-
-  '@asteasolutions/zod-to-openapi@5.5.0(zod@3.25.76)':
-    dependencies:
-      openapi3-ts: 4.5.0
-      zod: 3.25.76
 
   '@auth/core@0.41.2':
     dependencies:
@@ -4466,14 +4444,7 @@ snapshots:
     dependencies:
       hono: 4.12.17
 
-  '@hono/zod-openapi@0.2.0(hono@4.12.17)(zod@3.25.76)':
-    dependencies:
-      '@asteasolutions/zod-to-openapi': 5.5.0(zod@3.25.76)
-      '@hono/zod-validator': 0.1.11(hono@4.12.17)(zod@3.25.76)
-      hono: 4.12.17
-      zod: 3.25.76
-
-  '@hono/zod-validator@0.1.11(hono@4.12.17)(zod@3.25.76)':
+  '@hono/zod-validator@0.2.2(hono@4.12.17)(zod@3.25.76)':
     dependencies:
       hono: 4.12.17
       zod: 3.25.76
@@ -5907,7 +5878,7 @@ snapshots:
       eslint: 8.57.1
       eslint-import-resolver-node: 0.3.10
       eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0(eslint@8.57.1))(eslint@8.57.1)
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
       eslint-plugin-jsx-a11y: 6.10.2(eslint@8.57.1)
       eslint-plugin-react: 7.37.5(eslint@8.57.1)
       eslint-plugin-react-hooks: 5.0.0-canary-7118f5dd7-20230705(eslint@8.57.1)
@@ -5937,7 +5908,7 @@ snapshots:
       tinyglobby: 0.2.16
       unrs-resolver: 1.11.1
     optionalDependencies:
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1)
+      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -5952,7 +5923,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1(eslint-plugin-import@2.32.0(eslint@8.57.1))(eslint@8.57.1))(eslint@8.57.1):
+  eslint-plugin-import@2.32.0(@typescript-eslint/parser@7.2.0(eslint@8.57.1)(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@8.57.1):
     dependencies:
       '@rtsao/scc': 1.1.0
       array-includes: 3.1.9
@@ -6762,10 +6733,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
 
-  openapi3-ts@4.5.0:
-    dependencies:
-      yaml: 2.8.4
-
   openid-client@5.7.1:
     dependencies:
       jose: 4.15.9
@@ -6876,14 +6843,13 @@ snapshots:
       camelcase-css: 2.0.1
       postcss: 8.5.14
 
-  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.14)(tsx@4.21.0)(yaml@2.8.4):
+  postcss-load-config@6.0.1(jiti@1.21.7)(postcss@8.5.14)(tsx@4.21.0):
     dependencies:
       lilconfig: 3.1.3
     optionalDependencies:
       jiti: 1.21.7
       postcss: 8.5.14
       tsx: 4.21.0
-      yaml: 2.8.4
 
   postcss-nested@6.2.0(postcss@8.5.14):
     dependencies:
@@ -7252,7 +7218,7 @@ snapshots:
 
   tailwind-merge@2.6.1: {}
 
-  tailwindcss@3.4.19(tsx@4.21.0)(yaml@2.8.4):
+  tailwindcss@3.4.19(tsx@4.21.0):
     dependencies:
       '@alloc/quick-lru': 5.2.0
       arg: 5.0.2
@@ -7271,7 +7237,7 @@ snapshots:
       postcss: 8.5.14
       postcss-import: 15.1.0(postcss@8.5.14)
       postcss-js: 4.1.0(postcss@8.5.14)
-      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.14)(tsx@4.21.0)(yaml@2.8.4)
+      postcss-load-config: 6.0.1(jiti@1.21.7)(postcss@8.5.14)(tsx@4.21.0)
       postcss-nested: 6.2.0(postcss@8.5.14)
       postcss-selector-parser: 6.1.2
       resolve: 1.22.12
@@ -7501,8 +7467,6 @@ snapshots:
   xtend@4.0.2: {}
 
   yallist@4.0.0: {}
-
-  yaml@2.8.4: {}
 
   yocto-queue@0.1.0: {}
 

@@ -39,13 +39,12 @@ export function ConnectorsClient({ initialConnectors, workspaceId }: Props) {
         setAdding(true)
         setError('')
         try {
-            const resp = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/v1/workspaces/${workspaceId}/connectors`, {
+            const resp = await fetch(`/api/v1/workspaces/${workspaceId}/connectors`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-Workspace-Id': workspaceId,
                     // Use session token from cookie
-                    'Authorization': `Bearer ${document.cookie.split(';').find(c => c.trim().startsWith('next-auth.session-token='))?.split('=')?.[1] ?? ''}`,
                 },
                 body: JSON.stringify({
                     displayName: newName || `${newProvider} connector`,

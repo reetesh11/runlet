@@ -1,5 +1,6 @@
-// API client that automatically includes the NextAuth session token
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
+// All API calls go through /api/v1/ — the Next.js proxy
+// The proxy adds auth server-side and forwards to the Hono API
+// No need to pass tokens from the client
 
 export async function apiClient<T>(
     path: string,
@@ -7,7 +8,6 @@ export async function apiClient<T>(
 ): Promise<T> {
     const { workspaceId, ...fetchOptions } = options ?? {}
 
-    // Get session token from cookie (client-side)
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         ...(fetchOptions.headers as Record<string, string> ?? {}),
@@ -15,18 +15,8 @@ export async function apiClient<T>(
 
     if (workspaceId) headers['X-Workspace-Id'] = workspaceId
 
-    // Get the session token from next-auth cookie
-    if (typeof document !== 'undefined') {
-        const tokenCookie = document.cookie
-            .split(';')
-            .find(c => c.trim().startsWith('next-auth.session-token='))
-            ?.split('=')?.[1]
-        if (tokenCookie) {
-            headers['Authorization'] = `Bearer ${decodeURIComponent(tokenCookie)}`
-        }
-    }
-
-    const resp = await fetch(`${API_BASE}${path}`, { ...fetchOptions, headers })
+    // All requests go to /api/v1/ — no Authorization header needed
+    const resp = await fetch(`/api/v1/${path}`, { ...fetchOptions, headers })
 
     if (!resp.ok) {
         const err = await resp.json().catch(() => ({ error: 'Request failed' })) as { error?: string }

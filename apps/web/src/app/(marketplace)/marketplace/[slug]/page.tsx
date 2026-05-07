@@ -109,7 +109,7 @@ export default async function AgentDetailPage({
                             {/* Add to workspace button */}
                             {workspaceId ? (
                                 alreadyInstalled ? (
-                                    <Link href={`/workspace/${workspaceId}/agents`}
+                                    <Link href={`/workspace/${workspaceId}/agents/install?agentId=${agent.id}`}
                                         className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium">
                                         <CheckCircle className="w-4 h-4" /> Already installed
                                     </Link>
@@ -119,7 +119,7 @@ export default async function AgentDetailPage({
                                         // Install agent to workspace
                                         redirect(`/workspace/${workspaceId}/agents`)
                                     }}>
-                                        <Link href={`/workspace/${workspaceId}/agents`}
+                                        <Link href={`/workspace/${workspaceId}/agents/install?agentId=${agent.id}`}
                                             className="flex items-center gap-2 px-4 py-2 bg-brand-500 hover:bg-brand-400 text-white rounded-lg text-sm font-medium transition-colors">
                                             <Download className="w-4 h-4" /> Add to Workspace
                                         </Link>

@@ -10,7 +10,7 @@
   "dependencies": {
     "hono": "^4.2.0",
     "@hono/node-server": "^1.9.0",
-    "@hono/zod-openapi": "^0.2.0",
+    "@hono/zod-validator": "^0.2.0",
     "@runlet/db": "workspace:*",
     "@runlet/schemas": "workspace:*",
     "@runlet/types": "workspace:*",
@@ -19,6 +19,7 @@
     "@runlet/storage": "workspace:*",
     "@runlet/connectors": "workspace:*",
     "drizzle-orm": "latest",
+    "postgres": "latest",
     "zod": "^3.22.0",
     "nanoid": "^5.0.0"
   },
