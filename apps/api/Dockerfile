@@ -1,9 +1,10 @@
 FROM node:22-alpine AS base
-RUN npm install -g pnpm@9.0.0
+RUN npm install -g pnpm@11.3.0
 
 # ── Install dependencies ────────────────────────────────────────
 FROM base AS deps
 WORKDIR /app
+COPY pnpm-lock.yaml ./
 COPY package.json pnpm-workspace.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/db/package.json ./packages/db/
@@ -46,7 +47,6 @@ ENV NODE_ENV=production
 
 # Only copy compiled output + production node_modules
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules 2>/dev/null || true
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
 EXPOSE 3001
