@@ -1,22 +1,74 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalDependencies": [".env.local"],
+  "globalEnv": [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "UPSTASH_REDIS_REST_URL",
+    "UPSTASH_REDIS_REST_TOKEN",
+    "NEXTAUTH_SECRET",
+    "NEXTAUTH_URL",
+    "NEXT_PUBLIC_API_URL",
+    "API_URL",
+    "INTERNAL_API_SECRET",
+    "PAYLOAD_ENCRYPTION_KEY",
+    "CONFIG_ENCRYPTION_KEY",
+    "ANTHROPIC_API_KEY",
+    "R2_ACCOUNT_ID",
+    "R2_ACCESS_KEY_ID",
+    "R2_SECRET_ACCESS_KEY",
+    "R2_ENDPOINT",
+    "R2_BUCKET_PROMPTS",
+    "R2_BUCKET_PAYLOADS",
+    "GITHUB_OAUTH_CLIENT_ID",
+    "GITHUB_OAUTH_CLIENT_SECRET",
+    "NODE_ENV"
+  ],
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        ".next/**",
+        "!.next/cache/**",
+        "dist/**"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": { "outputs": [] },
-    "typecheck": { "dependsOn": ["^build"], "outputs": [] },
-    "test": { "outputs": [] },
-    "db:generate": { "cache": false, "outputs": ["migrations/**"] },
-    "db:migrate": { "cache": false },
-    "db:seed": { "cache": false },
-    "db:studio": { "cache": false, "persistent": true },
-    "db:reset": { "cache": false }
+    "lint": {
+      "dependsOn": [
+        "^lint"
+      ],
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^typecheck"
+      ],
+    },
+    "test": {
+      "outputs": []
+    },
+    "db:generate": {
+      "cache": false,
+      "outputs": [
+        "migrations/**"
+      ]
+    },
+    "db:migrate": {
+      "cache": false
+    },
+    "db:seed": {
+      "cache": false
+    },
+    "db:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:reset": {
+      "cache": false
+    }
   }
 }

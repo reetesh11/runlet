@@ -1,4 +1,4 @@
-import NextAuth, { type NextAuthOptions } from 'next-auth'
+import NextAuth, { type NextAuthOptions, type User } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import GithubProvider from 'next-auth/providers/github'
 import GoogleProvider from 'next-auth/providers/google'
@@ -39,7 +39,7 @@ export const authOptions: NextAuthOptions = {
       credentials: {
         email: { label: 'Email', type: 'email', placeholder: 'admin@runlet.ai' },
       },
-      async authorize(credentials) {
+      async authorize(credentials): Promise<User | null> {
         // check if the email is there or not
         if (!credentials?.email) return null
 
