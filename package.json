@@ -14,12 +14,13 @@
     "db:studio": "turbo run db:studio --filter=@runlet/db",
     "db:reset": "turbo run db:reset --filter=@runlet/db",
     "r2:setup": "tsx infra/r2/setup-buckets.ts",
-    "prepare": "husky"
+    "prepare": "node -e \"if(process.env.CI !== 'true' && process.env.VERCEL !== '1') { require('child_process').execSync('husky', {stdio: 'inherit'}) }\""
   },
   "devDependencies": {
     "turbo": "^2.0.0",
     "typescript": "^5.4.0",
     "@types/node": "^20.0.0",
-    "tsx": "^4.7.0"
+    "tsx": "^4.7.0",
+    "husky": "^9.0.0"
   }
 }
