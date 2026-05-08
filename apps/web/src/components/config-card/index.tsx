@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { Save, Zap, AlertCircle, CheckCircle, Plug } from 'lucide-react'
 import type { AgentVersion, Deployment } from '@runlet/types'
 
+
 interface ConfigCardProps {
   agentVersion: AgentVersion
   deployment?: Partial<Deployment>
@@ -13,6 +14,7 @@ interface ConfigCardProps {
   onActivate?: () => Promise<void>
   mode?: 'create' | 'edit'
 }
+
 
 export function ConfigurationCard({
   agentVersion,
@@ -26,9 +28,11 @@ export function ConfigurationCard({
   const [activating, setActivating] = useState(false)
   const [saved, setSaved] = useState(false)
 
+
   // Section 1 — Identity
   const [instanceName, setInstanceName] = useState(deployment?.instanceName ?? '')
   const [deploymentEnv, setDeploymentEnv] = useState(deployment?.deploymentEnv ?? 'production')
+
 
   // Section 2 — Connector bindings
   const [bindings, setBindings] = useState<Record<string, string>>(() => {
@@ -37,10 +41,12 @@ export function ConfigurationCard({
     return initial
   })
 
+
   // Section 3 — Agent parameters (from input_schema)
   const [params, setParams] = useState<Record<string, unknown>>(
     (deployment?.config as Record<string, unknown>) ?? {}
   )
+
 
   // Section 4 — Guardrails
   const [confidenceThreshold, setConfidenceThreshold] = useState(
@@ -57,6 +63,7 @@ export function ConfigurationCard({
   )
   const [maxRuns, setMaxRuns] = useState(deployment?.maxRunsPerHour ?? 1000)
 
+
   // Section 5 — Trigger
   const [triggerType, setTriggerType] = useState(deployment?.triggerType ?? 'webhook')
   const [cronExpr, setCronExpr] = useState(
@@ -64,8 +71,10 @@ export function ConfigurationCard({
   )
   const [executionMode, setExecutionMode] = useState(deployment?.executionMode ?? 'async')
 
+
   // Section 6 — Alerts
   const [slackAlertChannel, setSlackAlertChannel] = useState('')
+
 
   async function handleSave() {
     setSaving(true)
@@ -99,16 +108,20 @@ export function ConfigurationCard({
     }
   }
 
+
   async function handleActivate() {
     setActivating(true)
     try { await onActivate?.() }
     finally { setActivating(false) }
   }
 
+
   const inputSchemaProps = (agentVersion.inputSchema as { properties?: Record<string, unknown> })?.properties ?? {}
+
 
   return (
     <div className="space-y-4">
+
 
       {/* Section 1 — Identity */}
       <Section title="Deployment Identity" description="Name and scope this deployment">
@@ -120,6 +133,7 @@ export function ConfigurationCard({
         </div>
       </Section>
 
+
       {/* Section 2 — Connector Bindings */}
       <Section title="Connector Bindings" description="Link external services this agent requires">
         <div className="space-y-2">
@@ -127,6 +141,7 @@ export function ConfigurationCard({
             const matching = workspaceConnectors.filter(c => c.provider === req.provider)
             const bound = bindings[req.provider]
             const boundConn = workspaceConnectors.find(c => c.id === bound)
+
 
             return (
               <div key={req.provider} className="flex items-center gap-3 p-3 bg-white/3 border border-white/7 rounded-lg">
@@ -159,6 +174,7 @@ export function ConfigurationCard({
         </div>
       </Section>
 
+
       {/* Section 3 — Agent Parameters */}
       {Object.keys(inputSchemaProps).length > 0 && (
         <Section title="Agent Parameters" description="Configure agent-specific settings">
@@ -167,6 +183,7 @@ export function ConfigurationCard({
               const prop = schemaProp as { type?: string; description?: string; enum?: string[]; default?: unknown }
               const label = key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
               const value = (params[key] ?? prop.default ?? '') as string
+
 
               if (prop.enum) {
                 return <Select key={key} label={label} value={value}
@@ -185,6 +202,7 @@ export function ConfigurationCard({
           </div>
         </Section>
       )}
+
 
       {/* Section 4 — Guardrails */}
       <Section title="Guardrail Configuration" description="Control agent behaviour and safety">
@@ -221,10 +239,11 @@ export function ConfigurationCard({
         </div>
       </Section>
 
+
       {/* Section 5 — Trigger */}
       <Section title="Trigger Configuration" description="How this agent is invoked">
         <div className="space-y-3">
-          <Select label="Trigger Type" value={triggerType} onChange={e => setTriggerType(e.target.value)} options={[
+          <Select label="Trigger Type" value={triggerType} onChange={e => setTriggerType(e.target.value as 'webhook' | 'schedule' | 'connector_event' | 'flow_node' | 'api_call' | 'manual')} options={[
             { value: 'webhook', label: 'Webhook (HTTP POST)' },
             { value: 'schedule', label: 'Schedule (Cron)' },
             { value: 'connector_event', label: 'Connector Event' },
@@ -241,12 +260,14 @@ export function ConfigurationCard({
         </div>
       </Section>
 
+
       {/* Section 6 — Alerts */}
       <Section title="Notifications" description="Where to send alerts">
         <Input label="Slack Alert Channel" value={slackAlertChannel}
           onChange={e => setSlackAlertChannel(e.target.value)}
           placeholder="#support-alerts" />
       </Section>
+
 
       {/* Actions */}
       <div className="flex items-center gap-3 pt-2">
@@ -262,3 +283,8 @@ export function ConfigurationCard({
     </div>
   )
 }
+
+
+
+
+
