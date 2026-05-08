@@ -1,6 +1,6 @@
 {
   "$schema": "https://turbo.build/schema.json",
-  "globalEnv": [
+  "globalPassThroughEnv": [
     "DATABASE_URL",
     "REDIS_URL",
     "UPSTASH_REDIS_REST_URL",
@@ -30,7 +30,6 @@
       ],
       "outputs": [
         ".next/**",
-        "!.next/cache/**",
         "dist/**"
       ]
     },
@@ -41,21 +40,15 @@
     "lint": {
       "dependsOn": [
         "^lint"
-      ],
+      ]
     },
     "typecheck": {
       "dependsOn": [
         "^typecheck"
-      ],
-    },
-    "test": {
-      "outputs": []
+      ]
     },
     "db:generate": {
-      "cache": false,
-      "outputs": [
-        "migrations/**"
-      ]
+      "cache": false
     },
     "db:migrate": {
       "cache": false
