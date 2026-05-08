@@ -30,6 +30,7 @@
       ],
       "outputs": [
         ".next/**",
+        "!.next/cache/**",
         "dist/**"
       ]
     },
