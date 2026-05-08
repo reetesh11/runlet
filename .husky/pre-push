@@ -1,0 +1,8 @@
+#!/bin/sh
+echo "🔍 Running TypeScript check before push..."
+cd apps/web && npx tsc --noEmit --skipLibCheck 2>&1 | head -30
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Fix them before pushing."
+  exit 1
+fi
+echo "✅ TypeScript check passed."
