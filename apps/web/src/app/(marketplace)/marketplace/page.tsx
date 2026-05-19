@@ -1,5 +1,5 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { createDb, schema } from '@/lib/db'
 import { eq, and, ilike, or } from 'drizzle-orm'
 import Link from 'next/link'

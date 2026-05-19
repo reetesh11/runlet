@@ -38,6 +38,7 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name'),
   image: text('image'),
+  passwordHash: text('password_hash'),
   emailVerified: timestamp('email_verified'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -75,6 +76,7 @@ export const verificationTokens = pgTable('verification_tokens', {
   expires: timestamp('expires').notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.identifier, table.token] }),
+  identifierIdx: index('verification_tokens_identifier_idx').on(table.identifier),
 }))
 
 // ── Workspace Members ──────────────────────────────────────────

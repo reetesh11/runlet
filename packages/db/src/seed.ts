@@ -1,4 +1,5 @@
 import postgres from 'postgres'
+import bcrypt from 'bcryptjs'
 import path from 'path'
 
 const SEED_USER_ID = 'user_seed_001'
@@ -33,13 +34,16 @@ async function seed() {
 
   console.log("Seeding database...")
 
-  // seed user
+  // Seed dev user with a hashed password (dev password: Admin123!)
+  const passwordHash = await bcrypt.hash('Admin123!', 12)
   await client.unsafe(`
-  INSERT INTO users (id, email, name) 
-  VALUES ('${SEED_USER_ID}', 'admin@runlet.ai', 'Runlet Admin')
-  ON CONFLICT (id) DO NOTHING
+  INSERT INTO users (id, email, name, password_hash, email_verified)
+  VALUES ('${SEED_USER_ID}', 'admin@runlet.ai', 'Runlet Admin', '${esc(passwordHash)}', NOW())
+  ON CONFLICT (id) DO UPDATE SET
+    password_hash = EXCLUDED.password_hash,
+    email_verified = COALESCE(users.email_verified, NOW())
   `)
-  console.log("✅ Seeded user ")
+  console.log("✅ Seeded user (dev password: Admin123!)")
 
 
   // Seed workspace
