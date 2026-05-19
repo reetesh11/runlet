@@ -24,6 +24,6 @@ export const config = {
         '/workspace/:path*',
         '/studio/:path*',
         '/marketplace/:path*',
-        '/((?!login|api/auth|_next/static|_next/image|favicon.ico).*)'
+        '/((?!login(?:/|$)|signup(?:/|$)|accept-invite(?:/|$)|api/auth|_next/static|_next/image|favicon\\.ico).*)'
     ],
 }
