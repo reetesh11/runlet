@@ -7,12 +7,6 @@ import { drizzle } from 'drizzle-orm/postgres-js'
 import * as schema from '@runlet/db'
 import { generateId } from '@runlet/utils'
 
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.GITHUB_OAUTH_CLIENT_ID) throw new Error('GITHUB_OAUTH_CLIENT_ID is not set')
-  if (!process.env.GITHUB_OAUTH_CLIENT_SECRET) throw new Error('GITHUB_OAUTH_CLIENT_SECRET is not set')
-  if (!process.env.NEXTAUTH_SECRET) throw new Error('NEXTAUTH_SECRET is not set')
-}
-
 function createAuthDb() {
   const url = process.env.DATABASE_URL
   if (!url) throw new Error('DATABASE_URL is not set')
