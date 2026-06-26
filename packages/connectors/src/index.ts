@@ -2,10 +2,12 @@ export * from './types'
 export { zendeskConnector } from './providers/zendesk'
 export { slackConnector } from './providers/slack'
 export { githubConnector, notionConnector } from './providers/github_notion'
+export { gmailConnector } from './providers/gmail'
 
 import { zendeskConnector } from './providers/zendesk'
 import { slackConnector } from './providers/slack'
 import { githubConnector, notionConnector } from './providers/github_notion'
+import { gmailConnector } from './providers/gmail'
 import type { ConnectorDefinition } from './types'
 
 export const connectorRegistry: Record<string, ConnectorDefinition> = {
@@ -13,6 +15,7 @@ export const connectorRegistry: Record<string, ConnectorDefinition> = {
   slack: slackConnector,
   github: githubConnector,
   notion: notionConnector,
+  gmail: gmailConnector,
 }
 
 export function getConnectorDefinition(provider: string): ConnectorDefinition {

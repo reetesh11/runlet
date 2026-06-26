@@ -51,10 +51,16 @@ export default async function AgentsPage({ params }: { params: { workspaceId: st
             {deployedRows.length} deployed · {undeployedInstalls.length} awaiting configuration
           </p>
         </div>
-        <Link href="/marketplace"
-          className="flex items-center gap-2 px-3 py-2 bg-brand-500 hover:bg-brand-400 text-white text-sm font-medium rounded-xl transition-colors">
-          <Plus className="w-3.5 h-3.5" /> Add Agent
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/workspace/${workspaceId}/agents/create`}
+            className="flex items-center gap-2 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 text-sm font-medium rounded-xl transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Create Agent
+          </Link>
+          <Link href="/marketplace"
+            className="flex items-center gap-2 px-3 py-2 bg-brand-500 hover:bg-brand-400 text-white text-sm font-medium rounded-xl transition-colors">
+            <Store className="w-3.5 h-3.5" /> Browse Marketplace
+          </Link>
+        </div>
       </div>
 
       {isEmpty ? (

@@ -1,15 +1,13 @@
 #!/bin/sh
 echo "🔍 Running TypeScript check before push..."
 
-# Get the repo root
 REPO_ROOT=$(git rev-parse --show-toplevel)
 
 # Remove .next generated types — they cause false positives
 rm -rf "$REPO_ROOT/apps/web/.next/types" 2>/dev/null
 
-# Run tsc from web directory
-cd "$REPO_ROOT/apps/web"
-npx tsc --noEmit --skipLibCheck
+cd "$REPO_ROOT"
+pnpm typecheck
 EXIT_CODE=$?
 
 if [ $EXIT_CODE -ne 0 ]; then
@@ -19,6 +17,3 @@ fi
 
 echo "✅ TypeScript check passed."
 exit 0
-
-
-

@@ -7,6 +7,7 @@ export interface LLMRequest {
   userMessage: string
   modelConfig: ModelConfig
   outputSchema?: Record<string, unknown>
+  apiKey?: string
 }
 
 export interface LLMResponse {
@@ -21,16 +22,16 @@ export interface LLMResponse {
 
 // ── Anthropic ───────────────────────────────────────────────────
 let _anthropic: Anthropic | undefined
-function getAnthropic(): Anthropic {
+function getAnthropic(apiKey?: string): Anthropic {
+  if (apiKey) return new Anthropic({ apiKey })
   if (!_anthropic) _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   return _anthropic
 }
 
 async function callAnthropic(req: LLMRequest): Promise<LLMResponse> {
   const start = Date.now()
-  const client = getAnthropic()
+  const client = getAnthropic(req.apiKey)
 
-  // Build the user message — if output schema provided, ask for JSON
   let userMessage = req.userMessage
   if (req.outputSchema) {
     userMessage += `\n\nRespond ONLY with a valid JSON object matching this schema (no markdown, no explanation):\n${JSON.stringify(req.outputSchema, null, 2)}\n\nAlso include a "confidence_score" field (0.0 to 1.0) indicating your confidence in the output.`
@@ -47,7 +48,6 @@ async function callAnthropic(req: LLMRequest): Promise<LLMResponse> {
   const latencyMs = Date.now() - start
   const rawContent = message.content[0]?.type === 'text' ? message.content[0].text : ''
 
-  // Try to parse structured JSON output
   let structuredOutput: Record<string, unknown> | undefined
   let confidenceScore = 0.8
 
@@ -57,7 +57,6 @@ async function callAnthropic(req: LLMRequest): Promise<LLMResponse> {
       confidenceScore = typeof parsed.confidence_score === 'number' ? parsed.confidence_score : 0.8
       structuredOutput = parsed
     } catch {
-      // If JSON parse fails, create a structured wrapper
       structuredOutput = { raw_output: rawContent, confidence_score: 0.5 }
       confidenceScore = 0.5
     }
@@ -74,28 +73,27 @@ async function callAnthropic(req: LLMRequest): Promise<LLMResponse> {
   }
 }
 
-// ── OpenAI ──────────────────────────────────────────────────────
-let _openai: OpenAI | undefined
-function getOpenAI(): OpenAI {
-  if (!_openai) _openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-  return _openai
+// ── OpenAI-compatible helper ─────────────────────────────────────
+function makeOpenAIClient(apiKey: string | undefined, envKey: string, baseURL?: string): OpenAI {
+  return new OpenAI({
+    apiKey: apiKey ?? process.env[envKey] ?? '',
+    ...(baseURL ? { baseURL } : {}),
+  })
 }
 
-async function callOpenAI(req: LLMRequest): Promise<LLMResponse> {
+async function callOpenAICompatible(
+  req: LLMRequest,
+  client: OpenAI
+): Promise<LLMResponse> {
   const start = Date.now()
-  const client = getOpenAI()
 
   const messages: OpenAI.ChatCompletionMessageParam[] = [
     { role: 'system', content: req.systemPrompt },
-    { role: 'user', content: req.userMessage },
+    { role: 'user', content: req.outputSchema
+      ? `${req.userMessage}\n\nRespond ONLY with a valid JSON object. Include a "confidence_score" field (0.0-1.0).`
+      : req.userMessage,
+    },
   ]
-
-  if (req.outputSchema) {
-    messages[messages.length - 1] = {
-      role: 'user',
-      content: `${req.userMessage}\n\nRespond ONLY with a valid JSON object. Include a "confidence_score" field (0.0-1.0).`,
-    }
-  }
 
   const completion = await client.chat.completions.create({
     model: req.modelConfig.modelId,
@@ -135,9 +133,22 @@ async function callOpenAI(req: LLMRequest): Promise<LLMResponse> {
 
 // ── Unified executor ────────────────────────────────────────────
 export async function executeLLM(req: LLMRequest): Promise<LLMResponse> {
-  const provider = req.modelConfig.provider
+  const { provider } = req.modelConfig
+
   if (provider === 'anthropic') return callAnthropic(req)
-  if (provider === 'openai') return callOpenAI(req)
+
+  if (provider === 'openai') {
+    return callOpenAICompatible(req, makeOpenAIClient(req.apiKey, 'OPENAI_API_KEY'))
+  }
+
+  if (provider === 'groq') {
+    return callOpenAICompatible(req, makeOpenAIClient(req.apiKey, 'GROQ_API_KEY', 'https://api.groq.com/openai/v1'))
+  }
+
+  if (provider === 'gemini') {
+    return callOpenAICompatible(req, makeOpenAIClient(req.apiKey, 'GEMINI_API_KEY', 'https://generativelanguage.googleapis.com/v1beta/openai/'))
+  }
+
   throw new Error(`Unknown LLM provider: ${provider}`)
 }
 
@@ -154,6 +165,12 @@ export function calculateLLMCost(
     'claude-sonnet-4-5': { input: 3.0, output: 15.0 },
     'gpt-4o-mini': { input: 0.15, output: 0.6 },
     'gpt-4o': { input: 5.0, output: 15.0 },
+    'llama-3.3-70b-versatile': { input: 0.59, output: 0.79 },
+    'llama-3.1-8b-instant': { input: 0.05, output: 0.08 },
+    'llama3-8b-8192': { input: 0.05, output: 0.08 },
+    'mixtral-8x7b-32768': { input: 0.24, output: 0.24 },
+    'gemini-1.5-flash': { input: 0.075, output: 0.30 },
+    'gemini-1.5-pro': { input: 1.25, output: 5.0 },
   }
   const p = pricing[modelId] ?? { input: 1.0, output: 3.0 }
   return (promptTokens / 1_000_000) * p.input + (completionTokens / 1_000_000) * p.output

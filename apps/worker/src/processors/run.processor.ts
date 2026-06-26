@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq'
-import { db, runs, deployments, agentVersions, agents } from '@runlet/db'
+import { db, runs, deployments, agentVersions, agents, workspaceSecrets } from '@runlet/db'
 import { eq, and, gte, sql } from 'drizzle-orm'
-import { getRedis, QUEUE_NAMES } from '@runlet/queue'
+import { getRedis, QUEUE_NAMES, notifyQueue } from '@runlet/queue'
 import type { RunJob } from '@runlet/queue'
 import { storePayload, getPayload } from '@runlet/storage'
 import { generateId, hashPayload, decrypt } from '@runlet/utils'
@@ -120,18 +120,47 @@ async function processRunJob(job: { data: RunJob }): Promise<void> {
     const modelConfig = agentPromptDef?.modelConfig ?? version.modelConfig
     const outputSchema = agentPromptDef?.outputSchema ?? version.outputSchema
 
+    // Resolve workspace-stored API key for the LLM provider (falls back to env var if not set)
+    const providerKeyName: Record<string, string> = {
+      anthropic: 'ANTHROPIC_API_KEY',
+      openai: 'OPENAI_API_KEY',
+      groq: 'GROQ_API_KEY',
+      gemini: 'GEMINI_API_KEY',
+    }
+    const keyName = providerKeyName[modelConfig.provider]
+    let workspaceApiKey: string | undefined
+    if (keyName) {
+      const secretRow = await db.query.workspaceSecrets.findFirst({
+        where: and(
+          eq(workspaceSecrets.workspaceId, workspaceId),
+          eq(workspaceSecrets.keyName, keyName)
+        ),
+      })
+      if (secretRow?.encryptedValue) {
+        try {
+          workspaceApiKey = decrypt(secretRow.encryptedValue, configEncKey)
+        } catch {
+          console.warn(`[Worker] Failed to decrypt workspace API key ${keyName}, falling back to env var`)
+        }
+      }
+    }
+
+    // For data-fetching agents, pull external data before the LLM call
+    const enrichedPayload = await fetchExternalData(agent.slug, inputPayload, connectorCreds)
+
     // Apply PII masking if configured
     const piiPolicy = guardrailOverrides?.piiHandlingPolicy as string ?? 'mask_in_logs'
-    const processedInputText = piiPolicy === 'redact_before_llm' ? maskPii(inputText) : inputText
+    const processedInputText = piiPolicy === 'redact_before_llm' ? maskPii(JSON.stringify(enrichedPayload)) : JSON.stringify(enrichedPayload)
 
     // Build context-rich user message
-    const userMessage = buildUserMessage(agent.slug, inputPayload, deployConfig, processedInputText)
+    const userMessage = buildUserMessage(agent.slug, enrichedPayload, deployConfig, processedInputText)
 
     const llmResult = await executeLLM({
       systemPrompt: promptBody,
       userMessage,
       modelConfig: modelConfig as Parameters<typeof executeLLM>[0]['modelConfig'],
       outputSchema,
+      apiKey: workspaceApiKey,
     })
 
     const llmCost = calculateLLMCost(
@@ -182,7 +211,7 @@ async function processRunJob(job: { data: RunJob }): Promise<void> {
     const actionResults: Array<{ action: string; success: boolean; latencyMs?: number }> = []
 
     // Execute agent-specific connector actions
-    const actionsToExecute = buildActionsFromOutput(agent.slug, output, inputPayload, connectorCreds, deployConfig)
+    const actionsToExecute = buildActionsFromOutput(agent.slug, output, enrichedPayload, connectorCreds, deployConfig)
 
     for (const action of actionsToExecute) {
       try {
@@ -238,6 +267,21 @@ async function processRunJob(job: { data: RunJob }): Promise<void> {
       metadata: { durationMs: Date.now() - startTime, actionCount: actionsToExecute.length },
     })
 
+    // ── T9+ — Notify alert channels ───────────────────────────────
+    const successChannels = (deployment.alertChannels ?? []).filter(ch =>
+      ch.events?.includes('run_completed') || ch.events?.includes('run_success')
+    )
+    if (successChannels.length > 0) {
+      const nq = notifyQueue()
+      await nq.add('notify', {
+        workspaceId,
+        type: 'run_success',
+        runId,
+        channels: successChannels,
+        payload: { message: `Run completed successfully in ${Date.now() - startTime}ms` },
+      })
+    }
+
     console.log(`[Worker] Run ${runId} completed in ${Date.now() - startTime}ms`)
 
   } catch (err) {
@@ -256,6 +300,28 @@ async function processRunJob(job: { data: RunJob }): Promise<void> {
       eventType: 'run_failed',
       metadata: { error: errorMessage },
     })
+
+    // Notify failure alert channels
+    try {
+      const dep = await db.query.deployments.findFirst({
+        where: and(eq(deployments.id, deploymentId), eq(deployments.workspaceId, workspaceId)),
+      })
+      const failChannels = (dep?.alertChannels ?? []).filter(ch =>
+        ch.events?.includes('run_failed')
+      )
+      if (failChannels.length > 0) {
+        const nq = notifyQueue()
+        await nq.add('notify', {
+          workspaceId,
+          type: 'run_failed',
+          runId,
+          channels: failChannels,
+          payload: { message: `Run failed: ${errorMessage}` },
+        })
+      }
+    } catch (notifyErr) {
+      console.error('[Worker] Failed to enqueue failure notification:', notifyErr)
+    }
 
     throw err // BullMQ will retry based on job options
   }
@@ -346,9 +412,162 @@ ${JSON.stringify(input.existing_articles ?? [], null, 2)}
 
 Identify knowledge base gaps and draft article outlines.`
 
+    case 'job-requirements-extractor':
+      return `<job_description>
+${input.job_description ?? input.description ?? inputText}
+</job_description>
+
+${input.company_name ? `Company: ${input.company_name}` : ''}
+${input.candidate_name ? `Candidate: ${input.candidate_name}` : ''}
+
+Extract structured job requirements from this job description.`
+
+    case 'application-writer': {
+      const reqs = input.required_skills ?? input.requirements ?? {}
+      const background = input.candidate_background ?? input.background ?? inputText
+      return `<job_requirements>
+${JSON.stringify(reqs, null, 2)}
+</job_requirements>
+
+<candidate_background>
+Name: ${input.candidate_name ?? 'The candidate'}
+${background}
+</candidate_background>
+
+${input.role_title ? `Role: ${input.role_title}` : ''}
+${input.company_name ? `Company: ${input.company_name}` : ''}
+
+Write a tailored cover letter, resume bullets, and talking points for this application.`
+    }
+
+    case 'outreach-personalizer': {
+      const talkingPoints = input.key_talking_points ?? input.talking_points ?? []
+      return `<application_context>
+Role: ${input.role_title ?? 'the role'}
+Company: ${input.company_name ?? 'the company'}
+Candidate: ${input.candidate_name ?? 'the candidate'}
+Skills match score: ${input.skills_match_score ?? 'unknown'}
+
+Key talking points:
+${(talkingPoints as string[]).map((p, i) => `${i + 1}. ${p}`).join('\n')}
+
+Cover letter excerpt (for tone matching):
+${String(input.cover_letter ?? '').slice(0, 300)}
+</application_context>
+
+Write personalised outreach messages (LinkedIn + email) for this job application.`
+    }
+
+    case 'ticket-classifier':
+      return `<support_ticket>
+Ticket ID: ${input.ticket_id ?? 'Unknown'}
+Subject: ${input.subject ?? 'No subject'}
+Customer tier: ${input.customer_tier ?? 'standard'}
+Previous contacts: ${input.previous_contacts ?? 0}
+
+${input.description ?? input.body ?? inputText}
+</support_ticket>
+
+Classify this ticket and determine routing.`
+
+    case 'standup-summarizer':
+    case 'standup-summariser':
+      return `<standup_messages>
+Date: ${input.date ?? new Date().toDateString()}
+Channel: ${input.channel ?? '#standup'}
+Team size: ${(input.team_members as string[])?.length ?? 'unknown'}
+
+${JSON.stringify(input.messages ?? input.standup_messages ?? inputText, null, 2)}
+</standup_messages>
+
+Expected team members: ${JSON.stringify(input.team_members ?? [])}
+
+Generate the standup digest.`
+
+    case 'github-activity-summariser':
+      return `<github_activity>
+Repository/Team: ${input.repo ?? input.team_name ?? 'Unknown'}
+Period: ${input.period ?? 'Last 24 hours'}
+Date: ${input.date ?? new Date().toDateString()}
+
+Events/Activity:
+${JSON.stringify(input.github_events ?? input.events ?? input.github_events_json ?? [], null, 2).slice(0, 4000)}
+</github_activity>
+
+Summarise the engineering team's GitHub activity for the digest.`
+
+    case 'team-digest-composer':
+      return `<digest_inputs>
+Date: ${input.date ?? new Date().toDateString()}
+Team: ${input.team_name ?? 'Engineering'}
+
+GitHub Activity Summary:
+${JSON.stringify(input.github_summary ?? input.github_summary_text ?? {}, null, 2)}
+
+Standup Digest:
+${input.standup_digest ?? input.digest_text ?? JSON.stringify(input.standup_summary ?? {}, null, 2)}
+
+Active Blockers:
+${JSON.stringify(input.blockers ?? [], null, 2)}
+</digest_inputs>
+
+Compose the complete daily engineering digest.`
+
+    case 'gmail-digest': {
+      const emails = input.emails as Array<Record<string, unknown>> ?? []
+      const days = input.days ?? 7
+      if (emails.length === 0) {
+        return `No unread emails found in the last ${days} days. Return a digest_summary stating the inbox is clear.`
+      }
+      const emailList = emails.map((e, i) =>
+        `--- Email ${i + 1} ---\nFrom: ${e.from}\nSubject: ${e.subject}\nDate: ${e.date}\nSnippet: ${e.snippet}\n\nBody:\n${e.body}`
+      ).join('\n\n')
+      return `Summarise these ${emails.length} unread emails from the last ${days} days:\n\n${emailList}`
+    }
+
     default:
       return `Input data:\n${inputText}`
   }
+}
+
+// ── Pre-LLM data fetching for data-pull agents ─────────────────
+async function fetchExternalData(
+  slug: string,
+  input: Record<string, unknown>,
+  creds: Record<string, Record<string, unknown>>
+): Promise<Record<string, unknown>> {
+  if (slug === 'gmail-digest') {
+    const gmailCreds = creds['gmail'] ?? {}
+    if (!gmailCreds.accessToken) {
+      console.warn('[Worker] gmail-digest: no Gmail credentials, running on empty input')
+      return { ...input, emails: [], emails_fetched: 0 }
+    }
+
+    const days = (input.days as number) ?? 7
+    const maxMessages = Math.min((input.max_messages as number) ?? 20, 50)
+
+    console.log(`[Worker] gmail-digest: fetching up to ${maxMessages} unread emails from last ${days} days`)
+
+    const listResult = await executeConnectorAction('gmail', 'messages.list', gmailCreds, { days, maxResults: maxMessages })
+    if (!listResult.success || !listResult.data) {
+      console.warn('[Worker] gmail-digest: failed to list messages:', listResult.error)
+      return { ...input, emails: [], emails_fetched: 0 }
+    }
+
+    const messageIds = (listResult.data as Array<{ id: string }>).map(m => m.id)
+    const emails: unknown[] = []
+
+    for (const msgId of messageIds) {
+      const msgResult = await executeConnectorAction('gmail', 'messages.get', gmailCreds, { messageId: msgId })
+      if (msgResult.success && msgResult.data) emails.push(msgResult.data)
+    }
+
+    console.log(`[Worker] gmail-digest: fetched ${emails.length} emails`)
+    return { ...input, emails, emails_fetched: emails.length, days }
+  }
+
+  // All other agents: pass through unchanged
+  return input
 }
 
 // ── Build actions from LLM output ──────────────────────────────
@@ -445,7 +664,8 @@ function buildActionsFromOutput(
       break
     }
 
-    case 'standup-summariser': {
+    case 'standup-summariser':
+    case 'standup-summarizer': {
       const digestChannel = (input.digest_channel as string) ?? (config.digest_channel as string) ?? '#standup-digest'
       if (slackCreds.accessToken && output.digest_text) {
         actions.push({
@@ -481,7 +701,6 @@ function buildActionsFromOutput(
       const notionDbId = config.notion_database_id as string
       if (notionCreds.accessToken && notionDbId && output.articles_to_create) {
         const articles = output.articles_to_create as Array<{ title: string; description: string }>
-        // Create a Notion page with the gap analysis report
         actions.push({
           provider: 'notion',
           action: 'pages.create',
@@ -490,6 +709,39 @@ function buildActionsFromOutput(
             parentDatabaseId: notionDbId,
             title: `KB Gap Report — ${new Date().toLocaleDateString()}`,
             content: `# KB Gap Analysis\n\n${output.executive_summary}\n\n## Articles to Create\n\n${articles.map(a => `### ${a.title}\n${a.description}`).join('\n\n')}`,
+          },
+        })
+      }
+      break
+    }
+
+    case 'team-digest-composer': {
+      const digestChannel = (config.digest_channel as string) ?? (input.digest_channel as string) ?? '#engineering'
+      if (slackCreds.accessToken && output.slack_message) {
+        actions.push({
+          provider: 'slack',
+          action: 'messages.post',
+          credentials: slackCreds,
+          input: {
+            channel: digestChannel,
+            text: output.slack_message as string,
+          },
+        })
+      }
+      break
+    }
+
+    case 'application-writer': {
+      const notionDbId = config.notion_database_id as string
+      if (notionCreds.accessToken && notionDbId && output.cover_letter) {
+        actions.push({
+          provider: 'notion',
+          action: 'pages.create',
+          credentials: notionCreds,
+          input: {
+            parentDatabaseId: notionDbId,
+            title: `Application — ${input.role_title ?? 'New Role'} at ${input.company_name ?? 'Company'}`,
+            content: `# Cover Letter\n\n${output.cover_letter}\n\n# Resume Bullets\n\n${JSON.stringify(output.resume_bullets, null, 2)}\n\n# Talking Points\n\n${(output.key_talking_points as string[] ?? []).map((p, i) => `${i + 1}. ${p}`).join('\n')}`,
           },
         })
       }

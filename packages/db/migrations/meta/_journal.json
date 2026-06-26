@@ -22,6 +22,13 @@
       "when": 1747582200000,
       "tag": "0002_verification_tokens_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782115349359,
+      "tag": "0003_chief_marvel_apes",
+      "breakpoints": true
     }
   ]
 }

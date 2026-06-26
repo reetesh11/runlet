@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import {
     ArrowLeft, Play, RefreshCw, Clock, Cpu, Shield,
     Zap, CheckCircle2, XCircle, AlertTriangle, Database,
-    Activity, Copy, CheckCircle
+    Activity, Copy, CheckCircle, FileText, ChevronDown, ChevronRight
 } from 'lucide-react'
 import { Badge } from '@/components/ui'
 import { cn, formatDate, formatRelative, formatDuration, formatTokens } from '@/lib/utils'
@@ -84,24 +84,38 @@ export function RunsClient({ workspaceId, deployment, agent, runs, selectedRun: 
     const [events, setEvents] = useState(initialEvents)
     const [expanded, setExpanded] = useState<string | null>(null)
     const [triggering, setTriggering] = useState(false)
-    const [triggerPayload, setTriggerPayload] = useState('{\n  "ticket_id": "12345",\n  "subject": "Test run",\n  "description": "This is a test trigger from the dashboard"\n}')
+    const [triggerPayload, setTriggerPayload] = useState('{\n  "days": 7,\n  "max_messages": 10\n}')
     const [showTrigger, setShowTrigger] = useState(false)
     const [webhookCopied, setWebhookCopied] = useState(false)
+    const [outputPayload, setOutputPayload] = useState<Record<string, unknown> | null>(null)
+    const [loadingOutput, setLoadingOutput] = useState(false)
+    const [showOutput, setShowOutput] = useState(true)
 
     async function handleSelectRun(run: Run) {
         setSelectedRun(run)
+        setOutputPayload(null)
         // Fetch events for this run
-        const resp = await fetch(
-            `/api/v1/workspaces/${workspaceId}/runs/${run.id}/audit`,
-            {
-                headers: {
-                    'X-Workspace-Id': workspaceId,
-                },
-            }
-        )
+        const resp = await fetch(`/api/v1/workspaces/${workspaceId}/runs/${run.id}/audit`)
         if (resp.ok) {
             const data = await resp.json() as { data: AuditEvent[] }
             setEvents(data.data)
+        }
+        // Auto-load output for completed runs
+        if (run.status === 'success') {
+            loadOutput(run.id)
+        }
+    }
+
+    async function loadOutput(runId: string) {
+        setLoadingOutput(true)
+        try {
+            const resp = await fetch(`/api/v1/workspaces/${workspaceId}/runs/${runId}/payload?type=output`)
+            if (resp.ok) {
+                const data = await resp.json() as { data: Record<string, unknown> }
+                setOutputPayload(data.data)
+            }
+        } finally {
+            setLoadingOutput(false)
         }
     }
 
@@ -275,6 +289,31 @@ export function RunsClient({ workspaceId, deployment, agent, runs, selectedRun: 
                             )}
                         </div>
 
+                        {/* Output viewer */}
+                        {(outputPayload || loadingOutput) && (
+                            <div className="mb-6">
+                                <button onClick={() => setShowOutput(v => !v)}
+                                    className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 hover:text-gray-300 transition-colors">
+                                    <FileText className="w-3.5 h-3.5" />
+                                    Agent Output
+                                    {showOutput ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                </button>
+                                {showOutput && (
+                                    loadingOutput ? (
+                                        <div className="text-xs text-gray-600 px-1">Loading output…</div>
+                                    ) : outputPayload ? (
+                                        <OutputViewer output={outputPayload} />
+                                    ) : null
+                                )}
+                            </div>
+                        )}
+                        {selectedRun.status === 'success' && !outputPayload && !loadingOutput && (
+                            <button onClick={() => loadOutput(selectedRun.id)}
+                                className="flex items-center gap-1.5 text-xs text-brand-400 hover:text-brand-300 mb-6 transition-colors">
+                                <FileText className="w-3.5 h-3.5" /> View output
+                            </button>
+                        )}
+
                         {/* Timeline */}
                         <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
                             Execution Timeline
@@ -328,6 +367,69 @@ export function RunsClient({ workspaceId, deployment, agent, runs, selectedRun: 
                 )}
             </div>
         </div>
+    )
+}
+
+// ── Output viewer — renders gmail digest summary nicely or falls back to JSON ──
+function OutputViewer({ output }: { output: Record<string, unknown> }) {
+    const { digest_summary, email_summaries, total_emails, emails_fetched, days_covered } = output as {
+        digest_summary?: string
+        email_summaries?: Array<{ from: string; subject: string; summary: string; importance: string }>
+        total_emails?: number
+        emails_fetched?: number
+        days_covered?: number
+        _meta?: unknown
+    }
+
+    // Gmail digest formatted view
+    if (digest_summary) {
+        return (
+            <div className="bg-white/3 border border-white/7 rounded-xl p-4 space-y-4">
+                {/* Stats */}
+                <div className="flex items-center gap-4 text-xs text-gray-500">
+                    {emails_fetched != null && <span>{emails_fetched} emails read</span>}
+                    {days_covered != null && <span>Last {days_covered} days</span>}
+                    {total_emails != null && <span>{total_emails} in inbox</span>}
+                </div>
+
+                {/* Summary */}
+                <div>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Summary</p>
+                    <p className="text-sm text-gray-200 leading-relaxed whitespace-pre-wrap">{digest_summary}</p>
+                </div>
+
+                {/* Individual email summaries */}
+                {email_summaries && email_summaries.length > 0 && (
+                    <div>
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Email Highlights</p>
+                        <div className="space-y-2">
+                            {email_summaries.map((e, i) => (
+                                <div key={i} className={cn(
+                                    'p-3 rounded-lg border text-xs',
+                                    e.importance === 'high' ? 'border-amber-500/20 bg-amber-500/5' : 'border-white/7 bg-white/2'
+                                )}>
+                                    <div className="flex items-start justify-between gap-2 mb-1">
+                                        <p className="font-medium text-gray-200">{e.subject}</p>
+                                        {e.importance === 'high' && <span className="text-amber-400 shrink-0">High</span>}
+                                    </div>
+                                    <p className="text-gray-500 mb-1">{e.from}</p>
+                                    <p className="text-gray-400">{e.summary}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
+    // Generic JSON fallback
+    const displayOutput = { ...output }
+    delete (displayOutput as Record<string, unknown>)._meta
+    return (
+        <pre className="text-xs text-gray-400 font-mono bg-black/20 border border-white/7 rounded-xl p-4 overflow-x-auto whitespace-pre-wrap">
+            {JSON.stringify(displayOutput, null, 2)}
+        </pre>
     )
 }
 

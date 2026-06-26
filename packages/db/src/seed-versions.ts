@@ -15,6 +15,7 @@ async function seedVersions() {
       { provider: 'slack', scopes: ['chat:write'], optional: true }
     ],
     'standup-summariser': [{ provider: 'slack', scopes: ['channels:history', 'chat:write'], optional: true }],
+    'standup-summarizer': [{ provider: 'slack', scopes: ['channels:history', 'chat:write'], optional: true }],
     'pr-review-summariser': [
       { provider: 'github', scopes: ['repo'], optional: true },
       { provider: 'slack', scopes: ['chat:write'], optional: true }
@@ -23,12 +24,19 @@ async function seedVersions() {
       { provider: 'zendesk', scopes: ['tickets:read'], optional: true },
       { provider: 'notion', scopes: ['pages:write'], optional: true }
     ],
+    'job-requirements-extractor': [],
+    'application-writer': [{ provider: 'notion', scopes: ['pages:write'], optional: true }],
+    'outreach-personalizer': [],
+    'ticket-classifier': [],
+    'gmail-digest': [{ provider: 'gmail', scopes: ['https://www.googleapis.com/auth/gmail.readonly'], optional: false }],
+    'github-activity-summariser': [{ provider: 'github', scopes: ['repo:read'], optional: true }],
+    'team-digest-composer': [{ provider: 'slack', scopes: ['chat:write'], optional: true }],
   }
 
   for (const agent of agents) {
     const versionId = `ver_${agent.id.slice(4)}_v1`
     const connectors = JSON.stringify(connectorMap[agent.slug] ?? [])
-    const modelConfig = JSON.stringify({ provider: 'anthropic', modelId: 'claude-haiku-4-5-20251001', temperature: 0.3, maxTokens: 1000 })
+    const modelConfig = JSON.stringify({ provider: 'groq', modelId: 'llama-3.3-70b-versatile', temperature: 0.3, maxTokens: 1000 })
     const inputSchema = JSON.stringify({ type: 'object', properties: { subject: { type: 'string', description: 'Subject or title' }, description: { type: 'string', description: 'Full description or body' }, ticket_id: { type: 'string', description: 'Source ticket ID (optional)' } } })
     const outputSchema = JSON.stringify({ type: 'object', properties: { reply: { type: 'string' }, confidence_score: { type: 'number' }, should_escalate: { type: 'boolean' } } })
     const guardrails = JSON.stringify([{ type: 'pii_mask', severity: 'warn', config: { policy: 'mask_in_logs' } }, { type: 'confidence_gate', severity: 'warn', config: { threshold: 0.65 } }])
