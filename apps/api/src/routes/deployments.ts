@@ -7,7 +7,9 @@ import { generateId, generateWebhookSecret, encrypt } from '@runlet/utils'
 import { enqueueRun, QUEUE_NAMES } from '@runlet/queue'
 import type { RunJob } from '@runlet/queue'
 
-export const deploymentRoutes = new Hono()
+type AppEnv = { Variables: { userId: string; userEmail: string; workspaceId: string; workspaceRole: string } }
+
+export const deploymentRoutes = new Hono<AppEnv>()
 
 // ── List deployments for a workspace ──────────────────────────
 deploymentRoutes.get('/', async (c) => {

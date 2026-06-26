@@ -1,21 +1,7 @@
 import { createMiddleware } from 'hono/factory'
 import { HTTPException } from 'hono/http-exception'
 import { eq, and } from 'drizzle-orm'
-import postgres from 'postgres'
-import { drizzle } from 'drizzle-orm/postgres-js'
-import * as schema from '@runlet/db'
-
-let _db: ReturnType<typeof drizzle> | undefined
-
-function getDb() {
-  if (!_db) {
-    const url = process.env.DATABASE_URL
-    if (!url) throw new Error('DATABASE_URL not set')
-    const client = postgres(url, { prepare: false })
-    _db = drizzle(client, { schema })
-  }
-  return _db
-}
+import { db, workspaceMembers, deployments } from '@runlet/db'
 
 // ── Auth middleware ─────────────────────────────────────────────
 // All requests now come through the Next.js proxy which adds
@@ -55,11 +41,10 @@ export const workspaceScopeMiddleware = createMiddleware<{
     return
   }
 
-  const db = getDb()
   const membership = await db.query.workspaceMembers.findFirst({
     where: and(
-      eq(schema.workspaceMembers.workspaceId, workspaceId),
-      eq(schema.workspaceMembers.userId, userId)
+      eq(workspaceMembers.workspaceId, workspaceId),
+      eq(workspaceMembers.userId, userId)
     ),
   })
 
@@ -78,9 +63,8 @@ export const webhookAuthMiddleware = createMiddleware(async (c, next) => {
   const deploymentId = c.req.param('deploymentId')
   if (!deploymentId) throw new HTTPException(400, { message: 'Missing deployment ID' })
 
-  const db = getDb()
   const deployment = await db.query.deployments.findFirst({
-    where: eq(schema.deployments.id, deploymentId),
+    where: eq(deployments.id, deploymentId),
   })
   if (!deployment) throw new HTTPException(404, { message: 'Deployment not found' })
 

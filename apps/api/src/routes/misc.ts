@@ -7,8 +7,10 @@ import { generateId, encrypt, decrypt } from '@runlet/utils'
 import { enqueueRun, flowQueue } from '@runlet/queue'
 import type { FlowJob } from '@runlet/queue'
 
+type AppEnv = { Variables: { userId: string; userEmail: string; workspaceId: string; workspaceRole: string } }
+
 // ── RUNS ───────────────────────────────────────────────────────
-export const runRoutes = new Hono()
+export const runRoutes = new Hono<AppEnv>()
 
 runRoutes.get('/', zValidator('query', RunsQuerySchema), async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -121,7 +123,7 @@ runRoutes.get('/analytics/summary', async (c) => {
 })
 
 // ── FLOWS ──────────────────────────────────────────────────────
-export const flowRoutes = new Hono()
+export const flowRoutes = new Hono<AppEnv>()
 
 flowRoutes.get('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -219,7 +221,7 @@ flowRoutes.delete('/:id', async (c) => {
 })
 
 // ── CONNECTORS ─────────────────────────────────────────────────
-export const connectorRoutes = new Hono()
+export const connectorRoutes = new Hono<AppEnv>()
 
 connectorRoutes.get('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -308,7 +310,7 @@ connectorRoutes.post('/:id/test', async (c) => {
 })
 
 // ── WORKSPACE ──────────────────────────────────────────────────
-export const workspaceRoutes = new Hono()
+export const workspaceRoutes = new Hono<AppEnv>()
 
 workspaceRoutes.get('/me', async (c) => {
   const userId = c.get('userId') as string
@@ -424,7 +426,7 @@ webhookRoutes.post('/:workspaceId/:deploymentId', async (c) => {
 })
 
 // ── WORKSPACE SECRETS (LLM keys, email keys, etc.) ─────────────
-export const secretRoutes = new Hono()
+export const secretRoutes = new Hono<AppEnv>()
 
 secretRoutes.get('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -473,7 +475,7 @@ secretRoutes.delete('/:keyName', async (c) => {
 })
 
 // ── AGENT STUDIO (create private agents) ──────────────────────
-export const agentStudioRoutes = new Hono()
+export const agentStudioRoutes = new Hono<AppEnv>()
 
 agentStudioRoutes.post('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -539,7 +541,8 @@ agentStudioRoutes.post('/', async (c) => {
     id: generateId('wka'),
     workspaceId,
     agentId,
-    installedVersionId: versionId,
+    pinnedVersionId: versionId,
+    installedBy: userId,
   }).catch(() => {})
 
   return c.json({ data: { agentId, versionId, slug } }, 201)

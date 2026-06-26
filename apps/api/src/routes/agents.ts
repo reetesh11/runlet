@@ -72,8 +72,10 @@ marketplaceRoutes.get('/:slug', async (c) => {
   return c.json({ data: { ...agent, versions } })
 })
 
+type AppEnv = { Variables: { userId: string; userEmail: string; workspaceId: string; workspaceRole: string } }
+
 // ── Agent authoring routes (authenticated) ─────────────────────
-export const agentRoutes = new Hono()
+export const agentRoutes = new Hono<AppEnv>()
 
 agentRoutes.get('/', async (c) => {
   const userId = c.get('userId') as string

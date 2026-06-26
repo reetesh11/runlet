@@ -6,6 +6,7 @@ import type { RunJob } from '@runlet/queue'
 import { storePayload, getPayload } from '@runlet/storage'
 import { generateId, hashPayload, decrypt } from '@runlet/utils'
 import { runGuardrails, maskPii } from '../engine/guardrail.engine'
+import type { GuardrailRule } from '@runlet/types'
 import { executeLLM, calculateLLMCost } from '../engine/llm.executor'
 import { writeAuditEvent, resolveCredentials } from '../engine/audit.writer'
 import { executeConnectorAction } from '@runlet/connectors'
@@ -62,7 +63,7 @@ async function processRunJob(job: { data: RunJob }): Promise<void> {
     )
 
     const topicBlocklist = (guardrailOverrides?.topicBlocklist as string[]) ?? []
-    const guardrailRules = version.guardrailRules ?? []
+    const guardrailRules = (version.guardrailRules ?? []) as GuardrailRule[]
 
     // Augment guardrail rules with deployment overrides
     const effectiveRules = [
