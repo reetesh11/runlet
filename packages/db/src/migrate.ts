@@ -1,7 +1,13 @@
+import { config } from 'dotenv'
+import { existsSync } from 'fs'
 // import { neon } from '@neondatabase/serverless'
 import postgres from 'postgres'
 import path from 'path'
 import fs from "fs"
+
+// Load .env.local for local development; in CI the env var is injected directly
+const envLocal = path.resolve(__dirname, '../../../.env.local')
+if (existsSync(envLocal)) config({ path: envLocal })
 
 
 async function main() {

@@ -5,12 +5,12 @@
   "types": "./src/index.ts",
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx --env-file=../../.env.local src/migrate.ts",
-    "db:seed": "tsx --env-file=../../.env.local src/seed.ts",
-    "db:seed-versions": "tsx --env-file=../../.env.local src/seed-versions.ts",
-    "db:seed-flows": "tsx --env-file=../../.env.local src/seed-flows.ts",
+    "db:migrate": "tsx src/migrate.ts",
+    "db:seed": "tsx src/seed.ts",
+    "db:seed-versions": "tsx src/seed-versions.ts",
+    "db:seed-flows": "tsx src/seed-flows.ts",
     "db:studio": "drizzle-kit studio",
-    "db:reset": "tsx --env-file=../../.env.local src/reset.ts",
+    "db:reset": "tsx src/reset.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
