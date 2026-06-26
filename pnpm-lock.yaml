@@ -321,6 +321,9 @@ importers:
       '@aws-sdk/s3-request-presigner':
         specifier: ^3.500.0
         version: 3.1042.0
+      '@runlet/utils':
+        specifier: workspace:*
+        version: link:../utils
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
