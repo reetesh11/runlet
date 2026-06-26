@@ -309,7 +309,7 @@ export function ConfigureClient({ workspaceId, agent, agentVersion, deployment, 
                 <Section title="How to trigger this agent" description="Choose when and how this agent runs" icon={<Webhook className="w-4 h-4" />}>
                     <Field label="Trigger type" hint="Webhook: you send data. Schedule: runs automatically on a timer. Manual: only from this dashboard.">
                         <select className={selectClass} value={triggerType} onChange={e => setTriggerType(e.target.value)}>
-                            <option value="webhook" className="bg-gray-900">Webhook — I'll send data via HTTP POST</option>
+                            <option value="webhook" className="bg-gray-900">Webhook — I&apos;ll send data via HTTP POST</option>
                             <option value="schedule" className="bg-gray-900">Schedule — run automatically on a timer</option>
                             <option value="manual" className="bg-gray-900">Manual — only from the dashboard</option>
                         </select>

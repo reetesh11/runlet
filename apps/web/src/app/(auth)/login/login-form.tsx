@@ -167,7 +167,7 @@ export function LoginForm() {
                 </div>
 
                 <p className="text-center text-xs text-gray-700 mt-4">
-                    Don't have an account?{' '}
+                    Don&apos;t have an account?{' '}
                     <Link href="/signup" className="text-brand-400 hover:text-brand-300">
                         Sign up
                     </Link>

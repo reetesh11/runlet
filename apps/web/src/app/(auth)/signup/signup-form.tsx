@@ -54,7 +54,7 @@ export function SignupForm() {
                         </p>
                         <p className="text-sm font-medium text-gray-300 mb-4">{email}</p>
                         <p className="text-xs text-gray-600">
-                            The link expires in 24 hours. Check your spam folder if you don't see it.
+                            The link expires in 24 hours. Check your spam folder if you don&apos;t see it.
                         </p>
                     </div>
                     <p className="text-center text-xs text-gray-700 mt-4">
@@ -83,7 +83,7 @@ export function SignupForm() {
                 <div className="bg-white/3 border border-white/7 rounded-2xl p-6">
                     <h1 className="text-lg font-bold text-white text-center mb-1">Create your account</h1>
                     <p className="text-sm text-gray-600 text-center mb-6">
-                        Enter your email and we'll send you an invitation link
+                        Enter your email and we&apos;ll send you an invitation link
                     </p>
 
                     <form onSubmit={handleSubmit} className="space-y-3">

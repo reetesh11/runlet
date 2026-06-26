@@ -173,7 +173,7 @@ export default function CreateAgentPage() {
         {step === 1 && (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-200 mb-1">Which model should power this agent?</h2>
-            <p className="text-xs text-gray-500 mb-4">Models marked "Paid" require the corresponding API key in Settings → API Keys.</p>
+            <p className="text-xs text-gray-500 mb-4">Models marked &quot;Paid&quot; require the corresponding API key in Settings → API Keys.</p>
             {MODEL_OPTIONS.map(group => (
               <div key={group.provider}>
                 <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2 capitalize">{group.provider}</p>
@@ -215,7 +215,7 @@ export default function CreateAgentPage() {
         {step === 2 && (
           <div className="space-y-4">
             <h2 className="text-sm font-semibold text-gray-200 mb-1">Write your system prompt</h2>
-            <p className="text-xs text-gray-500 mb-2">This is the core instruction that defines your agent's behavior. Be specific about what it should do, what format to output, and any rules to follow.</p>
+            <p className="text-xs text-gray-500 mb-2">This is the core instruction that defines your agent&apos;s behavior. Be specific about what it should do, what format to output, and any rules to follow.</p>
             <textarea
               value={form.systemPrompt}
               onChange={e => set('systemPrompt', e.target.value)}

@@ -82,7 +82,7 @@ export function AcceptInviteForm({ token, email }: Props) {
                 <div className="bg-white/3 border border-white/7 rounded-2xl p-6">
                     <h1 className="text-lg font-bold text-white text-center mb-1">Set your password</h1>
                     <p className="text-sm text-gray-600 text-center mb-1">
-                        You're joining as
+                        You&apos;re joining as
                     </p>
                     <p className="text-sm font-medium text-gray-300 text-center mb-6">{email}</p>
 
