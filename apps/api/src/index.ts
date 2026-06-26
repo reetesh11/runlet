@@ -15,7 +15,10 @@ import {
   connectorRoutes,
   workspaceRoutes,
   webhookRoutes,
+  secretRoutes,
+  agentStudioRoutes,
 } from './routes/misc'
+import { oauthStartRoutes, oauthCallbackRoutes } from './routes/oauth'
 
 const app = new Hono()
 
@@ -36,6 +39,7 @@ app.get('/', (c) => c.json({ name: 'Runlet API', version: '1.0.0' }))
 // ── Public routes ──────────────────────────────────────────────
 app.route('/v1/marketplace/agents', marketplaceRoutes)
 app.route('/v1/hooks', webhookRoutes)
+app.route('/v1/oauth', oauthCallbackRoutes)
 
 // ── Authenticated routes ───────────────────────────────────────
 const api = new Hono()
@@ -54,6 +58,9 @@ ws.route('/deployments', deploymentRoutes)
 ws.route('/runs', runRoutes)
 ws.route('/flows', flowRoutes)
 ws.route('/connectors', connectorRoutes)
+ws.route('/secrets', secretRoutes)
+ws.route('/agent-studio', agentStudioRoutes)
+ws.route('/oauth', oauthStartRoutes)
 
 api.route('/workspaces/:workspaceId', ws)
 app.route('/v1', api)

@@ -121,7 +121,7 @@ export function ConfigureClient({ workspaceId, agent, agentVersion, deployment, 
                     maxRunsPerHour: maxRuns,
                 },
                 triggerType,
-                triggerConfig: triggerType === 'schedule' ? { cron_expression: cronExpr } : {},
+                triggerConfig: triggerType === 'schedule' ? { cronExpression: cronExpr } : {},
                 executionMode,
                 alertChannels: slackAlert ? [{ type: 'slack', destination: slackAlert, events: ['run_failed'] }] : [],
                 maxRunsPerHour: maxRuns,
@@ -309,15 +309,30 @@ export function ConfigureClient({ workspaceId, agent, agentVersion, deployment, 
                 <Section title="How to trigger this agent" description="Choose when and how this agent runs" icon={<Webhook className="w-4 h-4" />}>
                     <Field label="Trigger type" hint="Webhook: you send data. Schedule: runs automatically on a timer. Manual: only from this dashboard.">
                         <select className={selectClass} value={triggerType} onChange={e => setTriggerType(e.target.value)}>
-                            <option value="webhook" className="bg-gray-900">Webhook — I'll send data via HTTP POST</option>
+                            <option value="webhook" className="bg-gray-900">Webhook — I&apos;ll send data via HTTP POST</option>
                             <option value="schedule" className="bg-gray-900">Schedule — run automatically on a timer</option>
                             <option value="manual" className="bg-gray-900">Manual — only from the dashboard</option>
                         </select>
                     </Field>
                     {triggerType === 'schedule' && (
-                        <Field label="Schedule (cron expression)" hint="When to run. Example: '0 9 * * 1-5' means every weekday at 9am.">
+                        <Field label="Schedule" hint="When to run. The scheduler checks every minute.">
+                            <div className="grid grid-cols-2 gap-2 mb-2">
+                                {[
+                                    { label: 'Every hour', cron: '0 * * * *' },
+                                    { label: 'Every 6 hours', cron: '0 */6 * * *' },
+                                    { label: 'Daily at 8am', cron: '0 8 * * *' },
+                                    { label: 'Weekdays 9am', cron: '0 9 * * 1-5' },
+                                ].map(preset => (
+                                    <button key={preset.cron} type="button"
+                                        onClick={() => setCronExpr(preset.cron)}
+                                        className={`px-3 py-2 text-xs rounded-lg border text-left transition-colors ${cronExpr === preset.cron ? 'border-brand-500 bg-brand-500/10 text-brand-300' : 'border-white/10 bg-white/3 text-gray-400 hover:border-white/20'}`}>
+                                        {preset.label}
+                                        <span className="block font-mono text-gray-600 mt-0.5">{preset.cron}</span>
+                                    </button>
+                                ))}
+                            </div>
                             <input className={inputClass} value={cronExpr} onChange={e => setCronExpr(e.target.value)} placeholder="0 9 * * 1-5" />
-                            <p className="text-xs text-gray-600 mt-1">Example: <code className="text-gray-500">0 9 * * 1-5</code> = 9am every weekday</p>
+                            <p className="text-xs text-gray-600 mt-1">Custom cron: <code className="text-gray-500">minute hour day month weekday</code></p>
                         </Field>
                     )}
                     <Field label="Response mode" hint="Async is recommended for most cases. Sync waits for the result but has a 30-second limit.">

@@ -62,65 +62,69 @@ runlet/
 
 ## Local Development Setup
 
-### 1. Clone and install
+### One-command start
 
 ```bash
 git clone https://github.com/your-username/runlet
 cd runlet
-pnpm install
+./start.sh
 ```
 
-### 2. Environment variables
+That's it. The script will:
 
-```bash
-cp .env.example .env.local
-```
+1. Check Node.js, pnpm, and Docker are installed and running
+2. Generate `.env.local` with secure random secrets (if it doesn't exist)
+3. Install all dependencies via pnpm
+4. Pull and start Docker services (Postgres, Redis, MinIO)
+5. Wait for each service to be healthy
+6. Run database migrations
+7. Seed agents, versions, and the 3 flow templates
+8. Create MinIO storage buckets
+9. Start web (:3000), API (:3001), and worker
+10. Open http://localhost:3000 in your browser
 
-Fill in `.env.local`. For local dev the minimum required:
+**After first run** — add your Anthropic API key to `.env.local` to enable AI agent runs:
 
 ```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/runlet
-REDIS_URL=redis://127.0.0.1:6379
-NEXTAUTH_SECRET=generate-with-openssl-rand-base64-32
-NEXTAUTH_URL=http://localhost:3000
 ANTHROPIC_API_KEY=sk-ant-xxx
-PAYLOAD_ENCRYPTION_KEY=generate-with-openssl-rand-hex-32
-CONFIG_ENCRYPTION_KEY=generate-with-openssl-rand-hex-32
-INTERNAL_API_SECRET=generate-with-openssl-rand-hex-32
-R2_ENDPOINT=http://localhost:9000
-R2_ACCESS_KEY_ID=minioadmin
-R2_SECRET_ACCESS_KEY=minioadmin
-R2_BUCKET_PROMPTS=runlet-prompts
-R2_BUCKET_PAYLOADS=runlet-payloads
 ```
 
-Then copy to web:
+Then restart with `./start.sh` (everything else is already set up and the script skips re-seeding).
+
+---
+
+### Manual setup (if you prefer step-by-step)
+
+<details>
+<summary>Expand manual steps</summary>
+
 ```bash
+# 1. Install dependencies
+pnpm install
+
+# 2. Copy and fill in environment variables
+cp .env.example .env.local
 cp .env.local apps/web/.env.local
-```
 
-### 3. Start Docker services
-
-```bash
+# 3. Start Docker services
 docker compose -f infra/docker/docker-compose.yml up -d
-```
 
-### 4. Database setup
-
-```bash
-pnpm db:generate
+# 4. Database
 pnpm db:migrate
 pnpm db:seed
-cd packages/db && npx tsx --env-file=../../.env.local src/seed-versions.ts && cd ../..
-```
+pnpm db:seed-versions
+pnpm db:seed-flows
 
-### 5. Start everything
+# 5. MinIO buckets
+pnpm r2:setup
 
-```bash
+# 6. Start everything
 pnpm dev
 ```
 
 Go to http://localhost:3000 → login with `admin@runlet.ai`
+
+</details>
 
 ---
 
@@ -128,11 +132,15 @@ Go to http://localhost:3000 → login with `admin@runlet.ai`
 
 | Script | What it does |
 |---|---|
-| `pnpm dev` | Start all apps |
+| `./start.sh` | **Full setup + start in one command** |
+| `pnpm dev` | Start all apps (after setup is done) |
 | `pnpm build` | Build all apps |
 | `pnpm db:generate` | Generate migrations from schema changes |
 | `pnpm db:migrate` | Apply migrations to database |
 | `pnpm db:seed` | Seed agents and workspace |
+| `pnpm db:seed-versions` | Seed agent versions |
+| `pnpm db:seed-flows` | Seed 3 pre-built flow templates with deployments |
+| `pnpm r2:setup` | Create MinIO/R2 storage buckets |
 | `pnpm db:studio` | Open Drizzle Studio |
 
 ---

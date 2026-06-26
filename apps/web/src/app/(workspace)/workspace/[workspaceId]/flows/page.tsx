@@ -1,11 +1,11 @@
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { eq, desc } from 'drizzle-orm'
 import { createDb, schema } from '@/lib/db'
 import { Badge, Button, Empty } from '@/components/ui'
 import { formatRelative } from '@/lib/utils'
-import { GitBranch, Plus } from 'lucide-react'
+import { GitBranch, Plus, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 export default async function FlowsPage({ params }: { params: { workspaceId: string } }) {
@@ -26,9 +26,14 @@ export default async function FlowsPage({ params }: { params: { workspaceId: str
           <h1 className="text-xl font-bold text-white">Flows</h1>
           <p className="text-sm text-gray-500">Multi-agent pipelines</p>
         </div>
-        <Link href={`/workspace/${workspaceId}/flows/new`}>
-          <Button size="sm"><Plus className="w-3.5 h-3.5" /> New Flow</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/workspace/${workspaceId}/flows/templates`}>
+            <Button size="sm" variant="secondary"><Sparkles className="w-3.5 h-3.5" /> Templates</Button>
+          </Link>
+          <Link href={`/workspace/${workspaceId}/flows/new`}>
+            <Button size="sm"><Plus className="w-3.5 h-3.5" /> New Flow</Button>
+          </Link>
+        </div>
       </div>
 
       {all.length === 0 ? (

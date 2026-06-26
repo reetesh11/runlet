@@ -1,6 +1,6 @@
 import {
   pgTable, pgEnum, text, integer, boolean,
-  timestamp, jsonb, real, index, primaryKey,
+  timestamp, jsonb, real, index, uniqueIndex, primaryKey,
 } from 'drizzle-orm/pg-core'
 
 // ── Enums ───────────────────────────────────────────────────────
@@ -8,7 +8,7 @@ export const agentStatusEnum = pgEnum('agent_status', ['draft', 'published', 'ar
 export const agentVisibilityEnum = pgEnum('agent_visibility', ['draft', 'private', 'unlisted', 'public'])
 export const agentLicenceEnum = pgEnum('agent_licence', ['runlet_open', 'mit', 'commercial_only', 'private'])
 export const versionStatusEnum = pgEnum('version_status', ['draft', 'published'])
-export const connectorProviderEnum = pgEnum('connector_provider', ['zendesk', 'slack', 'github', 'notion', 'salesforce', 'hubspot', 'jira', 'linear', 'custom'])
+export const connectorProviderEnum = pgEnum('connector_provider', ['zendesk', 'slack', 'github', 'notion', 'salesforce', 'hubspot', 'jira', 'linear', 'gmail', 'custom'])
 export const connectorAuthMethodEnum = pgEnum('connector_auth_method', ['oauth2_pkce', 'oauth2_client_credentials', 'api_key', 'basic_auth', 'webhook_signing'])
 export const connectorHealthEnum = pgEnum('connector_health', ['healthy', 'degraded', 'expired', 'revoked', 'unknown'])
 export const deploymentStatusEnum = pgEnum('deployment_status', ['saved_draft', 'active', 'paused', 'upgrading', 'error', 'deprecated'])
@@ -38,6 +38,7 @@ export const users = pgTable('users', {
   email: text('email').notNull().unique(),
   name: text('name'),
   image: text('image'),
+  passwordHash: text('password_hash'),
   emailVerified: timestamp('email_verified'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -75,6 +76,7 @@ export const verificationTokens = pgTable('verification_tokens', {
   expires: timestamp('expires').notNull(),
 }, (table) => ({
   pk: primaryKey({ columns: [table.identifier, table.token] }),
+  identifierIdx: index('verification_tokens_identifier_idx').on(table.identifier),
 }))
 
 // ── Workspace Members ──────────────────────────────────────────
@@ -356,6 +358,19 @@ export const oauthStates = pgTable('oauth_states', {
   expiresAt: timestamp('expires_at').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 })
+
+// ── Workspace Secrets (LLM keys, email keys, etc.) ────────────
+export const workspaceSecrets = pgTable('workspace_secrets', {
+  id: text('id').primaryKey(),
+  workspaceId: text('workspace_id').notNull().references(() => workspaces.id, { onDelete: 'cascade' }),
+  keyName: text('key_name').notNull(),
+  encryptedValue: text('encrypted_value').notNull(),
+  hint: text('hint'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+}, (table) => ({
+  uniqueKey: uniqueIndex('ws_secrets_key_idx').on(table.workspaceId, table.keyName),
+}))
 
 // ── Agent Stars ────────────────────────────────────────────────
 export const agentStars = pgTable('agent_stars', {

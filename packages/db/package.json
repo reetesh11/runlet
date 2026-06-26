@@ -7,22 +7,26 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx --env-file=../../.env.local src/migrate.ts",
     "db:seed": "tsx --env-file=../../.env.local src/seed.ts",
+    "db:seed-versions": "tsx --env-file=../../.env.local src/seed-versions.ts",
+    "db:seed-flows": "tsx --env-file=../../.env.local src/seed-flows.ts",
     "db:studio": "drizzle-kit studio",
     "db:reset": "tsx --env-file=../../.env.local src/reset.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "drizzle-orm": "latest",
     "@neondatabase/serverless": "latest",
-    "postgres": "^3.4.9",
-    "pg": "^8.11.0",
     "@types/pg": "^8.11.0",
-    "dotenv": "^16.4.0"
+    "dotenv": "^16.4.0",
+    "drizzle-orm": "latest",
+    "pg": "^8.11.0",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^3.0.0",
+    "@types/node": "^20.0.0",
+    "bcryptjs": "^3.0.3",
     "drizzle-kit": "latest",
-    "typescript": "^5.4.0",
     "tsx": "^4.7.0",
-    "@types/node": "^20.0.0"
+    "typescript": "^5.4.0"
   }
 }

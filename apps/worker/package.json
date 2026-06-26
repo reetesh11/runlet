@@ -20,7 +20,8 @@
     "ioredis": "^5.3.0",
     "drizzle-orm": "latest",
     "postgres": "latest",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "resend": "^4.0.0"
   },
   "devDependencies": {
     "esbuild": "^0.20.0",

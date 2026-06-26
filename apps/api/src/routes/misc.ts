@@ -1,14 +1,16 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
-import { db, runs, auditEvents, flowRuns, flows, connectors, credentialStore, oauthStates, deployments, workspaces, workspaceMembers, users } from '@runlet/db'
+import { db, runs, auditEvents, flowRuns, flows, connectors, credentialStore, oauthStates, deployments, workspaces, workspaceMembers, users, humanReviewRequests, workspaceSecrets, agents, agentVersions, workspaceAgents } from '@runlet/db'
 import { eq, and, desc, sql } from 'drizzle-orm'
 import { CreateFlowSchema, UpdateFlowSchema, CreateConnectorSchema, RunsQuerySchema, CreateWorkspaceSchema } from '@runlet/schemas'
 import { generateId, encrypt, decrypt } from '@runlet/utils'
 import { enqueueRun, flowQueue } from '@runlet/queue'
 import type { FlowJob } from '@runlet/queue'
 
+type AppEnv = { Variables: { userId: string; userEmail: string; workspaceId: string; workspaceRole: string } }
+
 // ── RUNS ───────────────────────────────────────────────────────
-export const runRoutes = new Hono()
+export const runRoutes = new Hono<AppEnv>()
 
 runRoutes.get('/', zValidator('query', RunsQuerySchema), async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -39,6 +41,48 @@ runRoutes.get('/:id', async (c) => {
   const run = await db.query.runs.findFirst({ where: and(eq(runs.id, id), eq(runs.workspaceId, workspaceId)) })
   if (!run) return c.json({ error: 'Not found' }, 404)
   return c.json({ data: run })
+})
+
+runRoutes.patch('/:id/review', async (c) => {
+  const id = c.req.param('id')
+  const workspaceId = c.get('workspaceId') as string
+  const body = await c.req.json().catch(() => ({})) as {
+    decision?: 'approved' | 'rejected'
+    notes?: string
+  }
+
+  if (!body.decision || !['approved', 'rejected'].includes(body.decision)) {
+    return c.json({ error: 'decision must be approved or rejected' }, 400)
+  }
+
+  const run = await db.query.runs.findFirst({
+    where: and(eq(runs.id, id), eq(runs.workspaceId, workspaceId)),
+  })
+  if (!run) return c.json({ error: 'Not found' }, 404)
+  if (run.status !== 'pending_review') {
+    return c.json({ error: `Run is not pending review (current status: ${run.status})` }, 409)
+  }
+
+  const newStatus = body.decision === 'approved' ? 'success' : 'failed'
+  const [updatedRun] = await db
+    .update(runs)
+    .set({ status: newStatus, completedAt: new Date() })
+    .where(eq(runs.id, id))
+    .returning()
+
+  // Update humanReviewRequests if a record exists
+  const reviewerId = c.get('userId') as string | undefined
+  await db
+    .update(humanReviewRequests)
+    .set({
+      reviewDecision: body.decision,
+      reviewNotes: body.notes ?? null,
+      reviewedBy: reviewerId ?? null,
+      resolvedAt: new Date(),
+    })
+    .where(eq(humanReviewRequests.runId, id))
+
+  return c.json({ data: updatedRun })
 })
 
 runRoutes.get('/:id/audit', async (c) => {
@@ -79,7 +123,7 @@ runRoutes.get('/analytics/summary', async (c) => {
 })
 
 // ── FLOWS ──────────────────────────────────────────────────────
-export const flowRoutes = new Hono()
+export const flowRoutes = new Hono<AppEnv>()
 
 flowRoutes.get('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -177,7 +221,7 @@ flowRoutes.delete('/:id', async (c) => {
 })
 
 // ── CONNECTORS ─────────────────────────────────────────────────
-export const connectorRoutes = new Hono()
+export const connectorRoutes = new Hono<AppEnv>()
 
 connectorRoutes.get('/', async (c) => {
   const workspaceId = c.get('workspaceId') as string
@@ -266,7 +310,7 @@ connectorRoutes.post('/:id/test', async (c) => {
 })
 
 // ── WORKSPACE ──────────────────────────────────────────────────
-export const workspaceRoutes = new Hono()
+export const workspaceRoutes = new Hono<AppEnv>()
 
 workspaceRoutes.get('/me', async (c) => {
   const userId = c.get('userId') as string
@@ -302,6 +346,43 @@ workspaceRoutes.get('/:workspaceId/members', async (c) => {
     .innerJoin(users, eq(workspaceMembers.userId, users.id))
     .where(eq(workspaceMembers.workspaceId, workspaceId))
   return c.json({ data: members })
+})
+
+workspaceRoutes.post('/:workspaceId/members/invite', async (c) => {
+  const workspaceId = c.req.param('workspaceId')
+  const body = await c.req.json().catch(() => ({})) as { email?: string; role?: string }
+
+  if (!body.email) return c.json({ error: 'email is required' }, 400)
+  const email = body.email.toLowerCase().trim()
+  const role = (body.role ?? 'developer') as 'owner' | 'admin' | 'developer' | 'operator' | 'viewer'
+
+  // Check if user already exists by email
+  let user = await db.query.users.findFirst({ where: eq(users.email, email) })
+  let created = false
+
+  if (!user) {
+    const newId = generateId('usr')
+    const [newUser] = await db.insert(users).values({ id: newId, email }).returning()
+    user = newUser
+    created = true
+  }
+
+  // Check if already a member
+  const existing = await db.query.workspaceMembers.findFirst({
+    where: and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, user.id)),
+  })
+  if (existing) {
+    return c.json({ error: 'User is already a member of this workspace' }, 409)
+  }
+
+  await db.insert(workspaceMembers).values({
+    id: generateId('wm'),
+    workspaceId,
+    userId: user.id,
+    role,
+  })
+
+  return c.json({ data: { invited: true, userId: user.id, created } }, 201)
 })
 
 // ── WEBHOOK INGESTION ──────────────────────────────────────────
@@ -342,4 +423,127 @@ webhookRoutes.post('/:workspaceId/:deploymentId', async (c) => {
   await enqueueRun(job, 'standard')
 
   return c.json({ data: { runId, status: 'queued' } }, 202)
+})
+
+// ── WORKSPACE SECRETS (LLM keys, email keys, etc.) ─────────────
+export const secretRoutes = new Hono<AppEnv>()
+
+secretRoutes.get('/', async (c) => {
+  const workspaceId = c.get('workspaceId') as string
+  const rows = await db.select({
+    id: workspaceSecrets.id,
+    keyName: workspaceSecrets.keyName,
+    hint: workspaceSecrets.hint,
+    createdAt: workspaceSecrets.createdAt,
+    updatedAt: workspaceSecrets.updatedAt,
+  }).from(workspaceSecrets).where(eq(workspaceSecrets.workspaceId, workspaceId))
+  return c.json({ data: rows })
+})
+
+secretRoutes.post('/', async (c) => {
+  const workspaceId = c.get('workspaceId') as string
+  const body = await c.req.json() as { keyName: string; value: string }
+  if (!body.keyName || !body.value) return c.json({ error: 'keyName and value are required' }, 400)
+
+  const encKey = process.env.CONFIG_ENCRYPTION_KEY!
+  const hint = body.value.length > 8 ? `...${body.value.slice(-4)}` : '****'
+  const encryptedValue = encrypt(body.value, encKey)
+
+  // Upsert — update if keyName already exists for this workspace
+  const existing = await db.query.workspaceSecrets.findFirst({
+    where: and(eq(workspaceSecrets.workspaceId, workspaceId), eq(workspaceSecrets.keyName, body.keyName)),
+  })
+
+  if (existing) {
+    await db.update(workspaceSecrets)
+      .set({ encryptedValue, hint, updatedAt: new Date() })
+      .where(eq(workspaceSecrets.id, existing.id))
+    return c.json({ data: { id: existing.id, keyName: body.keyName, hint } })
+  }
+
+  const id = generateId('sec')
+  await db.insert(workspaceSecrets).values({ id, workspaceId, keyName: body.keyName, encryptedValue, hint })
+  return c.json({ data: { id, keyName: body.keyName, hint } }, 201)
+})
+
+secretRoutes.delete('/:keyName', async (c) => {
+  const workspaceId = c.get('workspaceId') as string
+  const keyName = c.req.param('keyName')
+  await db.delete(workspaceSecrets)
+    .where(and(eq(workspaceSecrets.workspaceId, workspaceId), eq(workspaceSecrets.keyName, keyName)))
+  return c.json({ data: { deleted: true } })
+})
+
+// ── AGENT STUDIO (create private agents) ──────────────────────
+export const agentStudioRoutes = new Hono<AppEnv>()
+
+agentStudioRoutes.post('/', async (c) => {
+  const workspaceId = c.get('workspaceId') as string
+  const userId = c.get('userId') as string
+  const body = await c.req.json() as {
+    displayName: string
+    tagline: string
+    category: string
+    vertical: string
+    systemPrompt: string
+    inputSchema?: Record<string, unknown>
+    outputSchema?: Record<string, unknown>
+    modelProvider: string
+    modelId: string
+    temperature: number
+    maxTokens: number
+    requiredConnectors?: Array<{ provider: string; scopes: string[]; optional: boolean }>
+  }
+
+  if (!body.displayName || !body.systemPrompt || !body.modelProvider || !body.modelId) {
+    return c.json({ error: 'displayName, systemPrompt, modelProvider, modelId are required' }, 400)
+  }
+
+  const slug = body.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') + '-' + Date.now().toString(36)
+  const agentId = generateId('agt')
+  const versionId = generateId('ver')
+
+  const modelConfig = { provider: body.modelProvider, modelId: body.modelId, temperature: body.temperature ?? 0.3, maxTokens: body.maxTokens ?? 1000 }
+  const guardrails = [{ type: 'confidence_gate', severity: 'warn', config: { threshold: 0.65 } }]
+
+  await db.insert(agents).values({
+    id: agentId,
+    slug,
+    displayName: body.displayName,
+    tagline: body.tagline || body.displayName,
+    vertical: body.vertical || 'operations',
+    category: body.category || 'Custom',
+    status: 'published',
+    visibility: 'private',
+    licence: 'private',
+    authorId: userId,
+  })
+
+  await db.insert(agentVersions).values({
+    id: versionId,
+    agentId,
+    semver: '1.0.0',
+    promptBody: body.systemPrompt,
+    modelConfig,
+    inputSchema: body.inputSchema ?? { type: 'object', properties: { input: { type: 'string' } } },
+    outputSchema: body.outputSchema ?? { type: 'object', properties: { output: { type: 'string' }, confidence_score: { type: 'number' } } },
+    requiredConnectors: body.requiredConnectors ?? [],
+    guardrailRules: guardrails,
+    timeoutSeconds: 120,
+    status: 'published',
+    versionHash: `custom_${agentId}_v1`,
+  })
+
+  await db.update(agents).set({ latestPublishedVersionId: versionId }).where(eq(agents.id, agentId))
+
+  // Auto-install into workspace
+  await db.insert(workspaceAgents).values({
+    id: generateId('wka'),
+    workspaceId,
+    agentId,
+    pinnedVersionId: versionId,
+    installedBy: userId,
+  }).catch(() => {})
+
+  return c.json({ data: { agentId, versionId, slug } }, 201)
 })

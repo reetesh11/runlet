@@ -27,7 +27,7 @@ export interface ConnectorDefinition {
   description: string
   authMethods: string[]
   requiredScopes: string[]
-  actions: Record<string, ConnectorAction>
+  actions: Record<string, ConnectorAction<any, any>>
   oauthConfig?: {
     authorizationUrl: string
     tokenUrl: string

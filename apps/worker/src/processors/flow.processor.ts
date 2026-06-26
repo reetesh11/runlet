@@ -98,7 +98,7 @@ async function executeNodeChain(
       nodeOutput = { ...inputPayload, _human_review_gate: node.nodeId }
     }
 
-    ctx.nodeStates[node.nodeId] = { status: 'success', ...ctx.nodeStates[node.nodeId] }
+    ctx.nodeStates[node.nodeId] = { ...ctx.nodeStates[node.nodeId], status: 'success' as const }
 
   } catch (err) {
     ctx.nodeStates[node.nodeId] = {
@@ -310,7 +310,8 @@ async function getAncestorFlowIds(flowRunId: string): Promise<string[]> {
   let currentId: string | undefined = flowRunId
 
   while (currentId) {
-    const run = await db.query.flowRuns.findFirst({ where: eq(flowRuns.id, currentId) })
+    const id: string = currentId
+    const run: typeof flowRuns.$inferSelect | undefined = await db.query.flowRuns.findFirst({ where: eq(flowRuns.id, id) })
     if (!run) break
     flowIds.push(run.flowId)
     currentId = run.parentFlowRunId ?? undefined

@@ -5,7 +5,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Bot, GitBranch, Plug, Settings,
-  Store, Code2, LogOut, ChevronDown, Play,
+  Store, LogOut, Play, AlertTriangle, Key, Plus,
 } from 'lucide-react'
 
 interface NavItem { label: string; href: string; icon: React.ReactNode; exact?: boolean }
@@ -14,18 +14,19 @@ const NAV: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard className="w-4 h-4" />, exact: true },
   { label: 'Agents', href: '/agents', icon: <Bot className="w-4 h-4" /> },
   { label: 'Flows', href: '/flows', icon: <GitBranch className="w-4 h-4" /> },
-  { label: 'Connectors', href: '/connectors', icon: <Plug className="w-4 h-4" /> },
-  { label: 'Settings', href: '/settings', icon: <Settings className="w-4 h-4" /> },
+  { label: 'Review', href: '/review', icon: <AlertTriangle className="w-4 h-4" /> },
 ]
 
 export function Sidebar({ workspaceId }: { workspaceId: string }) {
   const pathname = usePathname()
   const { data: session } = useSession()
 
-  function isActive(item: NavItem) {
-    const path = `/workspace/${workspaceId}${item.href}`
-    return item.exact ? pathname === path : pathname.startsWith(path)
+  function isActive(href: string, exact = false) {
+    const path = `/workspace/${workspaceId}${href}`
+    return exact ? pathname === path : pathname.startsWith(path)
   }
+
+  const settingsActive = isActive('/settings')
 
   async function handleLogout() {
     await signOut({ callbackUrl: '/login' })
@@ -63,7 +64,7 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
             href={`/workspace/${workspaceId}${item.href}`}
             className={cn(
               'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
-              isActive(item)
+              isActive(item.href, item.exact)
                 ? 'bg-brand-500/15 text-brand-300 border border-brand-500/20'
                 : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
             )}
@@ -72,6 +73,41 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
             {item.label}
           </Link>
         ))}
+
+        {/* Settings with sub-nav */}
+        <div>
+          <Link
+            href={`/workspace/${workspaceId}/settings`}
+            className={cn(
+              'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
+              settingsActive
+                ? 'bg-brand-500/15 text-brand-300 border border-brand-500/20'
+                : 'text-gray-500 hover:text-gray-200 hover:bg-white/5'
+            )}
+          >
+            <Settings className="w-4 h-4" />
+            Settings
+          </Link>
+          {settingsActive && (
+            <div className="ml-4 pl-3 border-l border-white/7 mt-0.5 space-y-0.5">
+              {[
+                { label: 'API Keys', href: '/settings/secrets', icon: <Key className="w-3 h-3" /> },
+                { label: 'Connectors', href: '/settings/connectors', icon: <Plug className="w-3 h-3" /> },
+              ].map(sub => (
+                <Link key={sub.href} href={`/workspace/${workspaceId}${sub.href}`}
+                  className={cn(
+                    'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors',
+                    pathname === `/workspace/${workspaceId}${sub.href}`
+                      ? 'text-brand-300 bg-brand-500/10'
+                      : 'text-gray-600 hover:text-gray-300 hover:bg-white/5'
+                  )}>
+                  {sub.icon}
+                  {sub.label}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
 
         <div className="pt-3 mt-3 border-t border-white/7">
           <p className="px-3 mb-1 text-xs font-semibold text-gray-600 uppercase tracking-wider">Explore</p>
@@ -83,13 +119,13 @@ export function Sidebar({ workspaceId }: { workspaceId: string }) {
             <Store className="w-4 h-4" />
             Marketplace
           </Link>
-          <Link href="/studio"
+          <Link href={`/workspace/${workspaceId}/agents/create`}
             className={cn('flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors',
-              pathname.startsWith('/studio')
+              pathname === `/workspace/${workspaceId}/agents/create`
                 ? 'bg-brand-500/15 text-brand-300 border border-brand-500/20'
                 : 'text-gray-500 hover:text-gray-200 hover:bg-white/5')}>
-            <Code2 className="w-4 h-4" />
-            Agent Studio
+            <Plus className="w-4 h-4" />
+            Create Agent
           </Link>
         </div>
       </nav>

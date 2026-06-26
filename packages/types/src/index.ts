@@ -46,7 +46,7 @@ export interface AgentVersion {
 }
 
 export interface ModelConfig {
-  provider: 'anthropic' | 'openai'
+  provider: 'anthropic' | 'openai' | 'groq' | 'gemini'
   modelId: string
   temperature: number
   maxTokens: number
