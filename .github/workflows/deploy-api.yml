@@ -21,6 +21,13 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         working-directory: packages/db
         run: npx tsx src/migrate.ts
+      - name: Seed admin user
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        working-directory: packages/db
+        run: npx tsx src/seed-admin.ts
 
   deploy:
     needs: migrate

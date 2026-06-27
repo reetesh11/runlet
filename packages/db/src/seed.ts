@@ -34,8 +34,8 @@ async function seed() {
 
   console.log("Seeding database...")
 
-  // Seed dev user — use same password as migration 0005 for consistency
-  const passwordHash = await bcrypt.hash('Runlet$Admin2025!', 12)
+  // Local dev only — password is intentionally weak and only used locally
+  const passwordHash = await bcrypt.hash('Admin123!', 12)
   await client`
     INSERT INTO users (id, email, name, password_hash, email_verified)
     VALUES (${SEED_USER_ID}, 'admin@runlet.ai', 'Runlet Admin', ${passwordHash}, NOW())
@@ -43,7 +43,7 @@ async function seed() {
       password_hash = EXCLUDED.password_hash,
       email_verified = COALESCE(users.email_verified, NOW())
   `
-  console.log("✅ Seeded user (password: Runlet\$Admin2025!)")
+  console.log("✅ Seeded user (local dev password: Admin123!)")
 
 
   // Seed workspace
